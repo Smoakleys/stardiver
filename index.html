@@ -17,7 +17,7 @@
 </head>
 <body>
 
-<div class="sd-build">build 2026-11-02 19:05 UTC</div>
+<div class="sd-build">build 2026-11-02 19:28 UTC</div>
 <meta name="sd-orient" content="any">
 <script>if(matchMedia("(pointer:coarse)").matches||navigator.maxTouchPoints>0)document.documentElement.classList.add("sd-touch")</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -518,7 +518,7 @@ const byName=n=>planets.find(p=>p.name===n);
 
 /* ---------- orbiting ships (ambient war at Kestrel IV is the shared front other commanders are fighting) ---------- */
 const ships=[];const upA=V3(0,1,0),xA=V3(1,0,0),tmp=V3(0,0,0);
-function orbiter(model,planet,o){model.scale.setScalar((o.scale||1)*clamp(planet.r/.9,.45,1));mscene.add(model);const s={g:model,foe:!!o.foe,planet,rad:planet.r*o.rad,inc:o.inc,node:o.node,ph:Math.random()*TAU,sp:o.sp,prev:V3(0,0,0),info:o.info||(o.foe?{n:'Assembly Raider',w:'Droid fleet',d:'Fast, flimsy, and very sure of itself.'}:{n:'Concord Frigate',w:'Concord fleet',d:'Light warship. Bombards droid positions from orbit.'})};ships.push(s);return s;}
+function orbiter(model,planet,o){model.scale.setScalar((o.scale||1)*clamp(planet.r/.9,.32,1));mscene.add(model);const s={g:model,foe:!!o.foe,planet,rad:planet.r*o.rad,inc:o.inc,node:o.node,ph:Math.random()*TAU,sp:o.sp,prev:V3(0,0,0),info:o.info||(o.foe?{n:'Assembly Raider',w:'Droid fleet',d:'Fast, flimsy, and very sure of itself.'}:{n:'Concord Frigate',w:'Concord fleet',d:'Light warship. Bombards droid positions from orbit.'})};ships.push(s);return s;}
 function dropShip(s){mscene.remove(s.g);ships.splice(ships.indexOf(s),1);}
 const allyAmb=[],foeAmb=[];
 const CMDRS=['Cmdr. Halloran','Cmdr. Ryuu','Cmdr. Okafor','Cmdr. Vesk','Cmdr. Marisol','Cmdr. Brandt'];
@@ -806,7 +806,7 @@ const RESEARCH=[
   {k:'shield',n:'Wide Shield',d:'Shield covers 30% more ground',cost:{credits:500,fuel:300},t:420},
 ];
 const WEAP={barrage:{n:'Barrage',cd:20,rad:.36,svg:'<path d="M12 2v13M8 11l4 4 4-4M5 20h14"/>'},shield:{n:'Shield',cd:32,rad:.42,rounds:3,svg:'<path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/>'}};
-const DIFF={'KESTREL II':0.45,'KESTREL IV':1.0,'KESTREL VI':1.3,'VARN':1.5,'MYRE':1.2,'GLOAM':1.8,'HASK':1.4,'UMBRA':1.7,'NERESH PRIME':2.2};
+const DIFF={'KESTREL II':1.0,'KESTREL IV':1.5,'KESTREL VI':1.3,'VARN':1.5,'MYRE':1.2,'GLOAM':1.8,'HASK':1.4,'UMBRA':1.7,'NERESH PRIME':2.2};
 const MIX={'KESTREL II':{rivet:.62,gnat:.26,bulwark:.12},'KESTREL IV':{rivet:.45,bulwark:.15,stomper:.15,lobber:.1,gnat:.15},'KESTREL VI':{gnat:.5,rivet:.3,lobber:.2},'VARN':{stomper:.4,rivet:.4,bulwark:.2},'MYRE':{lobber:.35,rivet:.45,gnat:.2}};
 const CHATTER=['Relay 9 to Command: requesting clarification on "hold the line." Which line. There are several lines.',
  'Depot 4: shipment of left legs received. Awaiting right legs. Morale is uneven.',
@@ -1004,7 +1004,7 @@ let aim=null;
 function enterAim(w){const b=platBattle();if(!S.plat){toast('Build the Orbital Uplink in your base first.','warn');return;}
   if(!b){toast(plat.at?`No battle of yours at ${plat.at.name}. Move the platform to a planet you're attacking.`:'The platform is still travelling.','warn');return;}
   if(cdLeft(w)>0){toast(`${WEAP[w].n} recharging: ${fmt(cdLeft(w))}.`,'warn');return;}
-  aim={w,b,dir:null};closeSheet();setTab('map');focusPlanet(b.planet,Math.max(3.2,b.planet.r*9));renderAim();coachOff();}
+  aim={w,b,dir:null};closeSheet();setTab('map');focusPlanet(b.planet,Math.max(4,b.planet.r*11));renderAim();coachOff();}
 function exitAim(){aim=null;reticle.visible=false;renderAim();}
 function aimAt(dir){aim.dir=dir;const p=aim.b.planet;const R=WEAP[aim.w].rad*(aim.w==='shield'&&S.done.shield?1.3:1);
   reticle.visible=true;reticle.position.copy(dir).multiplyScalar(p.r*1.02).add(p.group.position);reticle.quaternion.setFromUnitVectors(V3(0,0,1),dir);reticle.scale.setScalar(R*p.r*.9);
@@ -1207,7 +1207,7 @@ function openShip(sh){selShip=sh;const i=sh.info;sheet(hd(sh.foe?'DROID SHIP':'C
 function openPatrol(pt){let h=hd(pt.poi?'INTERCEPTED TARGET':'ROAMING DROIDS',pt.poi?pt.poi.name:`Droid Patrol`,pt.poi?0:pt.lv)+`<p>${pt.poi?`Found by your Listening Post. Gone in ${fmt(pt.poi.exp-S.G)}.`:'A droid patrol cruising your sector. Small, slow, and carrying loot.'}</p><div class="sec"><div class="kv"><span>Droids</span><b>~${nf(pt.n)}</b></div><div class="kv"><span>Drops</span><b>${pt.poi?'Lots of Alloy, Fuel, Credits, 1× 1m speed-up':'1× 1m speed-up, Alloy, Fuel'}</b></div></div><div class="sec">${pt.busy?'<span class="note">Your army is already on its way.</span>':'<button class="btn pri" id="pAtk">Attack</button>'}</div>`;
   sheet(h,'patrol');const b=hud.sheet.querySelector('#pAtk');if(b)b.onclick=()=>openSend({patrol:pt,pos:()=>pt.pos(),r:.5,name:'Droid Patrol'});}
 function openSend(target){const avail=TYPES.filter(t=>S.troops[t]>0);
-  if(!avail.length){toast('No troops at home. Train some at the Barracks.','warn');return;}
+  if(!avail.length){const back=armies.filter(a=>a.dir==='back').sort((a,b)=>(a.t0+a.dur)-(b.t0+b.dur))[0];toast(back?`Your troops are flying home: back in ${fmt(back.t0+back.dur-S.G)}. Or train more at the Barracks.`:'No troops at home. Train some at the Barracks.','warn');return;}
   if(busy()>=slots()){toast(`All ${slots()} army slots are busy. Upgrade the Command Center to Lv 5 for a third.`,'warn');return;}
   const pt=!!target.patrol;const A=home.group.position,B=target.pos();
   let h=hd(pt?'ATTACK PATROL':'ATTACK',target.name)+`<p>${pt?'Your army flies out, fights the patrol, and survivors return home with the loot.':'Your army flies out and fights one droid wave. Survivors return home. A win pushes control toward the Concord.'}</p><div class="sec">`+
@@ -1321,7 +1321,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
   // battles
   for(const b of [...battles])if(S.G>=b.next){b.next+=3.5;const r=battleRound(b);if(r.done)endBattle(b,r.win);else if(b.round===6&&Math.random()<.7)toast(pick(QUIPS),'drd');}
   // platform
-  if(S.plat){if(plat.at){plat.ph+=dt*.35;const p=plat.at,R=p.r*1.75+.35;plat.g.position.set(Math.cos(plat.ph)*R,.35+Math.sin(plat.ph*.7)*.08,Math.sin(plat.ph)*R).add(p.group.position);plat.g.rotation.y=-plat.ph;plat.trail.forEach(s=>s.material.opacity=0);}
+  if(S.plat){const ps=1.15*clamp((plat.at||plat.to||home).r/.9,.4,1);plat.g.scale.setScalar(plat.at?ps:1.15);if(plat.at){plat.ph+=dt*.35;const p=plat.at,R=p.r*1.75+.35;plat.g.position.set(Math.cos(plat.ph)*R,.35+Math.sin(plat.ph*.7)*.08,Math.sin(plat.ph)*R).add(p.group.position);plat.g.rotation.y=-plat.ph;plat.trail.forEach(s=>s.material.opacity=0);}
     else if(plat.to){const u=clamp((S.G-plat.t0)/plat.dur,0,1),uu=THREE.MathUtils.smoothstep(u,0,1);arc(plat.from,plat.to.group.position,.4,plat.to.r*1.8,uu,plat.g.position);
       plat.trail.forEach((s,i)=>{arc(plat.from,plat.to.group.position,.4,plat.to.r*1.8,Math.max(0,uu-i*.012),s.position);s.material.opacity=.4*(1-i/plat.trail.length);s.scale.setScalar(.4*(1-i/plat.trail.length)+.1);});
       if(u>=1){plat.at=plat.to;plat.to=null;S.plat={at:plat.at.name};toast(`Orbital Platform in orbit over ${plat.at.name}.`,'gold');renderWeap();renderChips();if(sheetFor==='planet'&&selP)selectPlanet(selP);}}
