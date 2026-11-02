@@ -1,0 +1,931 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Stardiver">
+<meta name="theme-color" content="#090b11">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Stardiver Loop Prototype</title>
+<script>if(matchMedia("(pointer:coarse)").matches||navigator.maxTouchPoints>0)document.documentElement.classList.add("sd-touch")</script>
+<style>
+/* phone play mode (added by deploy/build.py) */
+
+  html.sd-touch,html.sd-touch body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;-webkit-text-size-adjust:100%}
+  html.sd-touch body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  html.sd-touch *{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  html.sd-touch .wrap>header,html.sd-touch .wrap>.ask{display:none}
+  html.sd-touch .wrap{display:block;padding:0;max-width:none;margin:0}
+  html.sd-touch .phone{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;max-width:none;aspect-ratio:auto;border:0;border-radius:0;box-shadow:none;margin:0}
+  html.sd-touch .phone .hud{left:env(safe-area-inset-left,0px);right:env(safe-area-inset-right,0px)}
+  html.sd-touch .sd-rotate{position:fixed;inset:0;z-index:99;display:none;place-items:center;text-align:center;padding:24px;background:#090b11;color:#ffc94a;font:600 18px/1.4 "Chakra Petch",system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase}
+  html.sd-touch .sd-rotate span{display:block;font-size:56px;margin-bottom:12px}
+@media (orientation:portrait){html.sd-touch .sd-rotate{display:grid}}
+.sd-build{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(4px + env(safe-area-inset-bottom,0px));z-index:98;font:500 9px/1 ui-monospace,Menlo,monospace;color:#ffffff55;pointer-events:none;letter-spacing:.06em}
+</style>
+</head>
+<body>
+<div class="sd-rotate"><div><span>&#x21bb;</span>Turn your phone sideways</div></div>
+<div class="sd-build">build 2026-11-02 18:09 UTC</div>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one landscape phone screen that is the whole game; a short note above, a "what to judge" list below. Single dark theme by choice: it's a game screen. */
+:root{--bg:#090b11;--panel:#0d1424;--fg:#e9eaf0;--muted:#8d93a6;--line:#232838;--accent:#ffc94a;--ally:#4fe3ff;--foe:#ff4d5e;--good:#7dffb0;
+--display:"Chakra Petch",ui-sans-serif,system-ui,sans-serif;--body:"Instrument Sans",ui-sans-serif,system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;color-scheme:dark}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1320px;margin:0 auto;padding-block:24px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:22px}
+header{display:grid;gap:8px;max-width:72ch}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(26px,4vw,40px);line-height:1.05;margin:0;text-wrap:balance}
+header p{margin:0;color:var(--muted)} header strong{color:var(--fg);font-weight:500}
+h2{font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0}
+.ask{display:grid;gap:10px;max-width:72ch}.ask ul{margin:0;padding-left:20px;display:grid;gap:6px}.ask li::marker{color:var(--accent)}
+.rot{display:none;color:var(--accent);font-family:var(--mono);font-size:12px;letter-spacing:.1em}
+@media (orientation:portrait) and (max-width:700px){.rot{display:block}}
+
+/* phone */
+.phone{position:relative;width:100%;max-width:100%;aspect-ratio:19.5/9;border-radius:clamp(12px,3vw,38px);overflow:hidden;background:#05060a;border:clamp(3px,.7vw,9px) solid #1b1f2a;box-shadow:0 30px 80px -30px #000,0 0 0 1px #2c3242;container-type:inline-size;user-select:none;-webkit-user-select:none}
+@media (orientation:landscape) and (max-height:520px){.wrap{padding-block:8px}.phone{width:min(100%,calc((100vh - 24px)*19.5/9));margin-inline:auto}}
+.phone canvas,.phone .poster{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover}
+.phone canvas{touch-action:none;cursor:grab}.phone canvas:active{cursor:grabbing}
+.hud{position:absolute;inset:0;pointer-events:none;font-family:var(--display);color:#eef6ff;text-shadow:0 1px 6px #000a}
+.hud button{pointer-events:auto}
+button{font:inherit;color:inherit}
+.btn{all:unset;box-sizing:border-box;cursor:pointer;pointer-events:auto;font-family:var(--display);font-weight:600;letter-spacing:.12em;text-transform:uppercase;border:1px solid #ffffff38;background:#0b1120d9;backdrop-filter:blur(6px);color:#eef6ff;display:inline-flex;align-items:center;justify-content:center;gap:.5em;text-align:center}
+.btn:hover{border-color:#ffffff70}.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.pri{border-color:var(--accent);background:linear-gradient(180deg,#ffc94a2e,#ffc94a14);color:#fff1c9}
+.btn[disabled]{opacity:.38;cursor:not-allowed}
+
+/* top bar */
+.top{position:absolute;left:3.2cqw;top:2.4cqw;display:flex;align-items:center;gap:1.6cqw}
+.pow{display:grid;line-height:1}
+.pow .k{font-family:var(--mono);font-size:.85cqw;letter-spacing:.22em;color:#b9c7dc}
+.pow .v{font-size:2.6cqw;font-weight:700;letter-spacing:.04em;font-variant-numeric:tabular-nums;transition:color .3s}
+.pow .v.up{color:var(--good)}
+.res{display:flex;gap:1.1cqw;font-family:var(--mono);font-size:1.05cqw;letter-spacing:.06em;background:#0b1120a8;border:1px solid #ffffff1f;padding:.55cqw 1cqw;backdrop-filter:blur(6px)}
+.res span{display:flex;align-items:center;gap:.4cqw;font-variant-numeric:tabular-nums}
+.res i{width:.7cqw;height:.7cqw;display:block;transform:rotate(45deg)}
+
+/* operation panel */
+.order{position:absolute;right:3.2cqw;top:2.4cqw;width:21cqw;background:linear-gradient(180deg,#0d1424d9,#0a0f1bc0);border:1px solid #ffc94a55;border-left:.35cqw solid var(--accent);padding:1cqw 1.2cqw;display:grid;gap:.5cqw;backdrop-filter:blur(6px)}
+.order .k{font-family:var(--mono);font-size:.9cqw;letter-spacing:.2em;color:var(--accent)}
+.order .t{font-size:1.45cqw;font-weight:600;line-height:1.2}
+.bar{height:.55cqw;background:#ff4d5e;position:relative;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,var(--ally),#9ff2ff);transition:width .6s}
+.order .row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.9cqw;color:#c9d4e6}
+.order .row b{color:#fff;font-weight:500}
+
+/* bottom left nav */
+.nav{position:absolute;left:3.2cqw;bottom:2.4cqw;display:flex;gap:.8cqw}
+.nav .btn{font-size:1.1cqw;padding:.9cqw 1.4cqw;position:relative}
+.badge{position:absolute;top:-.6cqw;right:-.6cqw;min-width:1.6cqw;height:1.6cqw;border-radius:1cqw;background:var(--accent);color:#1a1300;font-family:var(--mono);font-size:.9cqw;display:grid;place-items:center;text-shadow:none;padding:0 .3cqw}
+.armies{position:absolute;left:3.2cqw;bottom:7.6cqw;display:grid;gap:.4cqw;font-family:var(--mono);font-size:.95cqw;letter-spacing:.08em}
+.armies div{background:#06141ccc;border:1px solid #4fe3ff55;padding:.3cqw .7cqw;color:#bff6ff}
+
+/* support weapons */
+.assets{position:absolute;right:3.2cqw;bottom:2.4cqw;display:grid;justify-items:end;gap:.6cqw}
+.assets .tgt{font-family:var(--mono);font-size:.9cqw;letter-spacing:.14em;color:#c9d4e6}
+.assets .tgt b{color:var(--accent);font-weight:500}
+.assets .row{display:flex;gap:.7cqw}
+.asset{all:unset;cursor:pointer;pointer-events:auto;width:5.2cqw;aspect-ratio:1;border:1px solid #ffffff38;background:#0b1120cc;display:grid;place-items:center;position:relative;backdrop-filter:blur(4px)}
+.asset svg{width:46%;height:46%}
+.asset .lbl{position:absolute;bottom:-1.5cqw;font-family:var(--mono);font-size:.72cqw;letter-spacing:.1em;color:#c9d4e6;white-space:nowrap}
+.asset .cd{position:absolute;inset:0;background:#05080fe6;display:grid;place-items:center;font-family:var(--mono);font-size:1.1cqw;color:#c9d4e6}
+.asset.ready{border-color:var(--accent);box-shadow:0 0 1.4cqw #ffc94a55 inset}
+.asset:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.asset.fire{animation:fire .5s}
+@keyframes fire{0%{transform:scale(.88)}100%{transform:scale(1)}}
+
+/* labels */
+.labels{position:absolute;inset:0}
+.pl{--s:1;position:absolute;transform:translate(-50%,0);display:grid;justify-items:center;gap:.15cqw;white-space:nowrap;text-align:center;transition:opacity .25s}
+.pl .n{font-size:calc(.86cqw*var(--s));font-weight:600;letter-spacing:.12em;padding-left:.12em;line-height:1.1;display:flex;align-items:center;gap:.35em;border-bottom:1px solid #9aa6bd;padding-bottom:.18em}
+.pl.ally .n{border-color:var(--ally)}.pl.foe .n{border-color:var(--foe)}.pl.war .n{border-color:var(--accent)}
+.pl .f{font-family:var(--mono);font-size:calc(.62cqw*var(--s));letter-spacing:.12em;padding-left:.12em}
+.pl:not(.war):not(.ally[data-home]):not(.sel) .f{display:none}
+.pl .mini{width:calc(4.5cqw*var(--s));height:.28cqw;background:#ff4d5e;position:relative;overflow:hidden}
+.pl .mini i{position:absolute;inset:0 auto 0 0;background:#4fe3ff;transition:width .6s}
+.pl:not(.war) .mini{display:none}
+.pl.ally .f{color:var(--ally)} .pl.foe .f{color:var(--foe)} .pl.war .f{color:var(--accent)} .pl.neu .f{color:#b9c7dc}
+.pl.war .n{font-size:calc(1cqw*var(--s));color:#fff}
+.pl.sel .n{color:var(--accent)}
+.base{display:inline-grid;place-items:center;width:1.3cqw;height:1.3cqw;border:1px solid var(--ally);transform:rotate(45deg);margin-bottom:.3cqw;background:#06202acc}
+.base span{transform:rotate(-45deg);font-size:.7cqw;color:var(--ally);font-family:var(--mono)}
+.sys{--s:1;position:absolute;transform:translate(-50%,0);display:grid;justify-items:center;gap:.1cqw;white-space:nowrap;text-align:center;opacity:.9}
+.sys .n{font-size:.8cqw;font-weight:600;letter-spacing:.3em;padding-left:.3em}
+.sys .f{font-family:var(--mono);font-size:.58cqw;letter-spacing:.14em;padding-left:.14em;opacity:.8}
+.sys.ally .n,.sys.ally .f{color:var(--ally)}.sys.foe .n,.sys.foe .f{color:var(--foe)}.sys.war .n,.sys.war .f{color:var(--accent)}.sys.neu .n,.sys.neu .f{color:#c9d4e6}
+.army{position:absolute;transform:translate(-50%,-100%);font-family:var(--mono);font-size:.72cqw;letter-spacing:.14em;color:var(--ally);white-space:nowrap;background:#06141ccc;border:1px solid #4fe3ff66;padding:.25cqw .6cqw;transition:opacity .2s}
+.army b{color:#fff;font-weight:500}
+.zoom{position:absolute;left:3.2cqw;top:50%;transform:translateY(-50%);display:grid;gap:.6cqw}
+.zoom .btn{width:3.4cqw;height:3.4cqw;font-size:1.8cqw;font-family:var(--mono)}
+
+/* planet sheet */
+.sheet{position:absolute;left:8.4cqw;top:9cqw;width:25cqw;background:linear-gradient(180deg,#0d1424f0,#0a0f1be8);border:1px solid #ffffff2a;border-top:.3cqw solid var(--accent);padding:1.2cqw 1.4cqw;display:grid;gap:.75cqw;backdrop-filter:blur(8px);pointer-events:auto;text-shadow:none}
+.sheet .k{font-family:var(--mono);font-size:.85cqw;letter-spacing:.2em;color:var(--muted)}
+.sheet .t{font-size:2cqw;font-weight:700;letter-spacing:.08em;line-height:1}
+.sheet .ctl{display:grid;gap:.35cqw}
+.sheet .ctl .row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.9cqw;color:#c9d4e6}
+.intel{display:grid;grid-template-columns:1fr auto auto;gap:.25cqw 1cqw;font-family:var(--mono);font-size:.9cqw;color:#c9d4e6}
+.intel .h{color:var(--muted);letter-spacing:.14em;font-size:.78cqw}
+.intel .ty{color:#ffb3bb}
+.sheet .acts{display:flex;gap:.6cqw}
+.sheet .acts .btn{flex:1;font-size:.95cqw;padding:.8cqw .4cqw}
+.x{all:unset;cursor:pointer;position:absolute;right:.9cqw;top:.8cqw;font-family:var(--mono);font-size:1.3cqw;color:var(--muted);pointer-events:auto}
+.x:focus-visible{outline:2px solid var(--accent)}
+.note{font-family:var(--mono);font-size:.8cqw;color:var(--muted);line-height:1.4}
+
+/* battle hud */
+.battle{position:absolute;left:50%;top:2.2cqw;transform:translateX(-50%);width:30cqw;display:grid;gap:.45cqw;background:#0b1120d0;border:1px solid #ffffff26;padding:.9cqw 1.2cqw;backdrop-filter:blur(6px);text-shadow:none}
+.battle .k{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.85cqw;letter-spacing:.18em;color:var(--accent)}
+.battle .side{display:grid;grid-template-columns:7cqw 1fr 4cqw;align-items:center;gap:.6cqw;font-family:var(--mono);font-size:.85cqw}
+.battle .side .b{height:.6cqw;background:#ffffff1c;position:relative}
+.battle .side .b i{position:absolute;inset:0 auto 0 0;transition:width .5s}
+.battle .side .num{text-align:right;font-variant-numeric:tabular-nums}
+.rounds{display:flex;gap:.25cqw}.rounds i{flex:1;height:.3cqw;background:#ffffff22}.rounds i.on{background:var(--accent)}
+.chatter{display:grid;gap:.2cqw;font-family:var(--mono);font-size:.82cqw;color:#ffb3bb;min-height:2.4cqw}
+.chatter div{animation:in .3s}
+@keyframes in{from{opacity:0;transform:translateY(.4cqw)}}
+.fxtag{position:absolute;transform:translate(-50%,-50%);font-family:var(--display);font-weight:700;font-size:1.5cqw;letter-spacing:.12em;color:var(--accent);text-shadow:0 0 1cqw #000;animation:tag 1.4s forwards;pointer-events:none}
+@keyframes tag{0%{opacity:0;transform:translate(-50%,-30%) scale(.8)}15%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-140%)}}
+
+/* toasts */
+.toasts{position:absolute;left:50%;bottom:2.6cqw;transform:translateX(-50%);display:grid;justify-items:center;gap:.45cqw;width:36cqw}
+.toast{font-family:var(--mono);font-size:.95cqw;letter-spacing:.06em;background:#0b1120e6;border:1px solid #ffffff2a;border-left:.25cqw solid var(--good);padding:.45cqw .9cqw;animation:toast 3.6s forwards;white-space:nowrap;text-shadow:none}
+.toast.warn{border-left-color:var(--foe)}.toast.gold{border-left-color:var(--accent)}
+@keyframes toast{0%{opacity:0;transform:translateY(.6cqw)}8%{opacity:1;transform:none}85%{opacity:1}100%{opacity:0}}
+
+/* modal */
+.scrim{position:absolute;inset:0;background:#03050ab8;backdrop-filter:blur(3px);display:grid;place-items:center;pointer-events:auto;text-shadow:none}
+.modal{width:min(62cqw,92%);max-height:84%;overflow:auto;background:linear-gradient(180deg,#101a2e,#0a0f1b);border:1px solid #ffffff2e;border-top:.35cqw solid var(--accent);padding:1.8cqw 2.2cqw;display:grid;gap:1.2cqw;position:relative;font-family:var(--body);scrollbar-width:thin}
+.modal h3{margin:0;font-family:var(--display);font-size:2.4cqw;letter-spacing:.08em;line-height:1}
+.modal .k{font-family:var(--mono);font-size:.9cqw;letter-spacing:.2em;color:var(--muted)}
+.modal p{margin:0;font-size:1.2cqw;color:#c9d4e6}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1cqw}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.9cqw}
+.card{border:1px solid #ffffff22;background:#ffffff08;padding:1cqw 1.1cqw;display:grid;gap:.45cqw;min-width:0}
+.card .nm{font-family:var(--display);font-weight:600;font-size:1.3cqw;letter-spacing:.06em;display:flex;justify-content:space-between;gap:.5cqw}
+.card .nm span{color:var(--accent);font-family:var(--mono);font-size:1cqw;font-weight:500}
+.card .ds{font-size:1cqw;color:var(--muted);line-height:1.35}
+.card .ct{font-family:var(--mono);font-size:.9cqw;color:#c9d4e6}
+.card .btn{font-size:.95cqw;padding:.6cqw .8cqw}
+.prog{height:.4cqw;background:#ffffff1c;position:relative}.prog i{position:absolute;inset:0 auto 0 0;background:var(--accent)}
+.slider{display:grid;grid-template-columns:8cqw 1fr 5cqw;align-items:center;gap:1cqw;font-family:var(--mono);font-size:1cqw}
+.slider input{width:100%;accent-color:var(--accent)}
+.slider output{text-align:right;font-variant-numeric:tabular-nums}
+.seg{display:flex;border:1px solid #ffffff2e}.seg button{all:unset;cursor:pointer;flex:1;text-align:center;padding:.7cqw;font-family:var(--display);font-weight:600;font-size:1.05cqw;letter-spacing:.12em}
+.seg button[aria-pressed="true"]{background:#ffc94a22;color:var(--accent)}
+.seg button:focus-visible{outline:2px solid var(--accent)}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:1cqw}
+.foot .btn{font-size:1.1cqw;padding:.9cqw 1.6cqw}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8cqw}
+.stat{border:1px solid #ffffff1f;padding:.8cqw;display:grid;gap:.2cqw}
+.stat .l{font-family:var(--mono);font-size:.8cqw;letter-spacing:.14em;color:var(--muted)}
+.stat .v{font-family:var(--display);font-weight:700;font-size:1.8cqw}
+.quote{font-family:var(--mono);font-size:1cqw;color:#ffb3bb;border-left:.2cqw solid var(--foe);padding-left:1cqw}
+.win{color:var(--good)}.loss{color:var(--foe)}
+.legend2{position:absolute;right:3.2cqw;top:13.6cqw;font-family:var(--mono);font-size:.8cqw;color:var(--muted);letter-spacing:.1em}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Stardiver · playable loop prototype · v1</div>
+  <h1>Feel the core loop</h1>
+  <p>A playable sketch of the whole loop on the approved star map. <strong>Tap Kestrel IV, send an army, fire orbital support while the battle runs, then open your base to spend the rewards.</strong> Time runs about 60x fast so you can feel a full day in minutes. The base screen is a functional placeholder (its art isn't designed yet), and every name and number is a placeholder from the design doc.</p>
+  <p class="rot">Turn your phone sideways for the best view.</p>
+</header>
+
+<section>
+  <div class="phone" id="phone">
+    <img class="poster" src="img/render.jpg" alt="Rendered Stardiver star map with a fleet bombarding a desert planet">
+    <canvas id="c" aria-label="Star map. Drag to pan, pinch or scroll to zoom, tap a planet to select it." role="img"></canvas>
+    <div class="hud" id="hud">
+      <div class="labels" id="labels"></div>
+      <div class="top">
+        <div class="pow"><span class="k">POWER</span><span class="v" id="power">0</span></div>
+        <div class="res" id="res"></div>
+      </div>
+      <div class="order" id="op">
+        <span class="k">MAJOR OPERATION</span>
+        <span class="t">Liberate Kestrel IV</span>
+        <div class="bar"><i id="opbar" style="width:62%"></i></div>
+        <div class="row"><span id="opctl">62% HELD</span><span>2D 14H LEFT</span></div>
+        <div class="row"><span>YOUR SHARE</span><b id="opshare">0.0%</b></div>
+      </div>
+      <div class="zoom"><button class="btn" id="zin" aria-label="Zoom in">+</button><button class="btn" id="zout" aria-label="Zoom out">−</button></div>
+      <div class="armies" id="armies"></div>
+      <div class="nav">
+        <button class="btn" id="bBase">Base</button>
+        <button class="btn" id="bOrders">Orders<span class="badge" id="ordBadge" hidden>!</span></button>
+        <button class="btn" id="bRecruit">Recruit</button>
+      </div>
+      <div class="assets">
+        <span class="tgt">TARGET · <b id="tgt">KESTREL IV</b></span>
+        <div class="row" id="assets"></div>
+      </div>
+      <div id="sheetWrap"></div>
+      <div id="battleWrap"></div>
+      <div class="toasts" id="toasts" aria-live="polite"></div>
+      <div id="tags"></div>
+      <div id="modalWrap"></div>
+    </div>
+  </div>
+</section>
+
+<section class="ask">
+  <h2>What to judge</h2>
+  <ul>
+    <li>Does sending an army and calling strikes feel like <em>your</em> part of a bigger war?</li>
+    <li>Is there always something to do, or did you ever sit waiting?</li>
+    <li>Do the rewards land often enough: toasts, Power ticking up, the operation bar moving?</li>
+    <li>Is the droid chatter the right dose of funny?</li>
+    <li>What felt slow, confusing, or flat?</li>
+  </ul>
+</section>
+</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+/* ---------- shared GLSL noise ---------- */
+const NOISE=`
+vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
+float snoise(vec3 v){const vec2 C=vec2(1.0/6.0,1.0/3.0);const vec4 D=vec4(0.0,0.5,1.0,2.0);
+vec3 i=floor(v+dot(v,C.yyy));vec3 x0=v-i+dot(i,C.xxx);vec3 g=step(x0.yzx,x0.xyz);vec3 l=1.0-g;
+vec3 i1=min(g.xyz,l.zxy);vec3 i2=max(g.xyz,l.zxy);vec3 x1=x0-i1+C.xxx;vec3 x2=x0-i2+C.yyy;vec3 x3=x0-D.yyy;
+i=mod289(i);vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
+float n_=0.142857142857;vec3 ns=n_*D.wyz-D.xzx;vec4 j=p-49.0*floor(p*ns.z*ns.z);vec4 x_=floor(j*ns.z);vec4 y_=floor(j-7.0*x_);
+vec4 x=x_*ns.x+ns.yyyy;vec4 y=y_*ns.x+ns.yyyy;vec4 h=1.0-abs(x)-abs(y);vec4 b0=vec4(x.xy,y.xy);vec4 b1=vec4(x.zw,y.zw);
+vec4 s0=floor(b0)*2.0+1.0;vec4 s1=floor(b1)*2.0+1.0;vec4 sh=-step(h,vec4(0.0));vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+vec3 p0=vec3(a0.xy,h.x);vec3 p1=vec3(a0.zw,h.y);vec3 p2=vec3(a1.xy,h.z);vec3 p3=vec3(a1.zw,h.w);
+vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));p0*=norm.x;p1*=norm.y;p2*=norm.z;p3*=norm.w;
+vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);m=m*m;
+return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));}
+float fbm(vec3 p){float a=0.5,s=0.0;for(int i=0;i<6;i++){s+=a*snoise(p);p*=2.03;a*=0.5;}return s;}
+`;
+
+
+/* ---------- setup ---------- */
+const phone=document.getElementById('phone'),canvas=document.getElementById('c'),labelsEl=document.getElementById('labels');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(32,19.5/9,0.1,400);
+const TAU=Math.PI*2,V3=(x,y,z)=>new THREE.Vector3(x,y,z),C=h=>new THREE.Color(h);
+
+/* ---------- nebula backdrop (parallax with camera pan) ---------- */
+const bg=new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.ShaderMaterial({
+  depthWrite:false,depthTest:false,uniforms:{uT:{value:0},uA:{value:19.5/9},uOff:{value:new THREE.Vector2()}},
+  vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.999,1.0);}`,
+  fragmentShader:NOISE+`varying vec2 vUv;uniform float uT,uA;uniform vec2 uOff;
+  float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+  float stars(vec2 uv,float sc){vec2 g=uv*sc;vec2 id=floor(g);vec2 f=fract(g)-0.5;float h=hash(id);
+    vec2 o=vec2(hash(id+3.1),hash(id+7.7))-0.5;float d=length(f-o*0.7);return step(0.86,h)*smoothstep(0.08*h,0.0,d)*(0.6+0.4*sin(uT*2.0+h*40.0));}
+  void main(){vec2 uv=vUv;uv.x*=uA;vec2 u2=uv+uOff;vec3 p=vec3(u2*1.05,uT*0.01);
+    vec3 q=vec3(fbm(p),fbm(p+vec3(5.2,1.3,0.0)),0.0);
+    float n=fbm(p+1.6*q);float n2=fbm(p*1.4+vec3(3.0,9.0,uT*0.015)+q);
+    vec3 col=vec3(0.02,0.035,0.08);
+    col=mix(col,vec3(0.48,0.16,0.62),smoothstep(-0.3,0.6,n)*0.6);
+    col=mix(col,vec3(0.05,0.55,0.75),smoothstep(0.0,0.7,q.x)*0.6);
+    col=mix(col,vec3(0.95,0.32,0.45),smoothstep(0.4,0.95,n2)*0.28);
+    col+=vec3(1.0,0.72,0.35)*smoothstep(0.3,0.9,fbm(p*0.6+7.0))*0.18;
+    float dust=smoothstep(0.2,0.7,fbm(p*1.6+q*2.0));col*=1.0-dust*0.12;
+    float vig=smoothstep(1.25,0.35,length((vUv-0.5)*vec2(1.6,1.4)));col*=0.6+0.4*vig;
+    vec2 su=uv+uOff*1.6;
+    col+=vec3(stars(su,90.0))*0.9+vec3(0.8,0.9,1.0)*stars(su+7.3,180.0)*0.6+vec3(1.0,0.9,0.8)*stars(uv+uOff*2.4+2.1,40.0)*1.3;
+    gl_FragColor=vec4(col,1.0);}`
+}));
+bg.frustumCulled=false;bg.renderOrder=-10;scene.add(bg);
+
+/* ---------- glow textures ---------- */
+function glowTex(stops){const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');
+  const gr=g.createRadialGradient(128,128,0,128,128,128);stops.forEach(([o,col])=>gr.addColorStop(o,col));g.fillStyle=gr;g.fillRect(0,0,256,256);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
+const GLOW=glowTex([[0,'rgba(255,255,255,1)'],[0.15,'rgba(255,255,255,.55)'],[0.45,'rgba(255,255,255,.12)'],[1,'rgba(255,255,255,0)']]);
+const SOFT=glowTex([[0,'rgba(255,255,255,.9)'],[0.5,'rgba(255,255,255,.25)'],[1,'rgba(255,255,255,0)']]);
+function sprite(tex,color,size,opacity=1){const m=new THREE.SpriteMaterial({map:tex,color,transparent:true,opacity,blending:THREE.AdditiveBlending,depthWrite:false});const s=new THREE.Sprite(m);s.scale.setScalar(size);return s;}
+
+/* ---------- lights for the ships ---------- */
+scene.add(new THREE.HemisphereLight(0xcfe8ff,0x3a2a4a,1.4));
+const key=new THREE.DirectionalLight(0xfff0dd,1.6);key.position.set(-1,2,1);scene.add(key);
+/* ---------- sector layout ---------- */
+const OWN={ally:'#4fe3ff',foe:'#ff4d5e',neu:'#9aa6bd',war:'#ffc94a'};
+const systems=[
+ {name:'VEGA',tag:'ALLIANCE · YOUR HOME',side:'ally',pos:V3(0,0,0),star:['#ffd27a','#fff4d8'],sr:1.3},
+ {name:'KESTREL',tag:'FRONT LINE',side:'war',pos:V3(25,0,6),star:['#ff9a4a','#ffe0b0'],sr:1.05},
+ {name:'ASHFALL',tag:'HOSTILE',side:'foe',pos:V3(50,0,-3),star:['#ff4a3a','#ffb09a'],sr:1.2},
+ {name:'TALOS',tag:'ALLIANCE',side:'ally',pos:V3(9,0,-22),star:['#7fb8ff','#e8f3ff'],sr:0.95},
+ {name:'NERESH',tag:'HOSTILE',side:'foe',pos:V3(34,0,-25),star:['#b07aff','#efe0ff'],sr:1.0},
+ {name:'ORRIN',tag:'UNCLAIMED',side:'neu',pos:V3(-24,0,-12),star:['#ffe9a8','#ffffff'],sr:0.85},
+];
+const P=(sys,o)=>({sys,...o});
+const planetDefs=[
+ P(0,{name:'HALCYON',tag:'YOUR BASE',side:'ally',home:true,r:0.62,d:4.2,a:2.3,seed:1.0,c:['#0b3d7a','#1f8fd0','#4f9b4a','#c9b98a'],atm:'#5fc8ff',sea:0.02,cloud:0.75}),
+ P(0,{name:'ORIEL',tag:'ALLIANCE',side:'ally',r:0.45,d:6.0,a:3.9,seed:9.3,c:['#5f86b8','#9fd2ef','#dfe9f5','#ffffff'],atm:'#a8e4ff',sea:0.12,cloud:0.35}),
+ P(0,{name:'CINDER',tag:'UNCLAIMED',side:'neu',r:0.3,d:2.6,a:0.6,seed:15.5,c:['#3a3a40','#55555c','#6e6a66','#a8a29a'],atm:'#c9c2b8'}),
+ P(0,{name:'THULE MAJOR',tag:'ALLIANCE',side:'ally',r:1.15,d:8.2,a:5.1,seed:7.0,gas:true,ring:true,c:['#c98a5a','#f1d3a0','#8a5a8f','#e0603c'],atm:'#ffd9a8'}),
+ P(1,{name:'KESTREL IV',tag:'UNDER ATTACK',side:'war',war:true,r:0.95,d:5.0,a:2.75,seed:4.2,c:['#6a3a1d','#a5582b','#d99a55','#f3d29a'],atm:'#ffb36b',sea:-0.25,cloud:0.18}),
+ P(1,{name:'KESTREL II',tag:'CONTESTED',side:'war',r:0.35,d:2.7,a:5.4,seed:21.0,c:['#4a3a32','#6a5244','#8a6a56','#c8a888'],atm:'#e0b090'}),
+ P(1,{name:'KESTREL VI',tag:'HOSTILE',side:'foe',r:0.85,d:7.4,a:0.5,seed:31.0,gas:true,c:['#2a7a8a','#8ad8d8','#1a4a6a','#e8ffff'],atm:'#8af0ff'}),
+ P(2,{name:'VARN',tag:'HOSTILE',side:'foe',r:0.65,d:3.8,a:2.0,seed:12.1,lava:true,c:['#1a0d0a','#2a1410','#3a2420','#5a3a30'],atm:'#ff5a3a'}),
+ P(2,{name:'MYRE',tag:'HOSTILE',side:'foe',r:0.55,d:6.0,a:4.4,seed:3.3,c:['#1e4a3a','#3aa070','#5b7a2a','#b5d36a'],atm:'#9dff8a',sea:0.0,cloud:0.5}),
+ P(2,{name:'GLOAM',tag:'HOSTILE',side:'foe',r:1.0,d:8.0,a:0.9,seed:41.0,gas:true,c:['#3a1a4a','#7a4a9a','#2a0a2a','#ff7ab0'],atm:'#d08aff'}),
+ P(3,{name:'ARDENT',tag:'ALLIANCE',side:'ally',r:0.5,d:3.5,a:1.0,seed:51.0,c:['#0a4a5a','#1aa0a0','#3a8a3a','#d0e0a0'],atm:'#7affd8',sea:0.05,cloud:0.55}),
+ P(3,{name:'SELK',tag:'ALLIANCE',side:'ally',r:0.4,d:5.6,a:3.6,seed:61.0,c:['#5f86b8','#9fd2ef','#cfe0f0','#ffffff'],atm:'#bfe8ff',sea:0.2,cloud:0.2}),
+ P(3,{name:'PYRA',tag:'ALLIANCE',side:'ally',r:0.6,d:7.4,a:5.6,seed:71.0,c:['#5a1a10','#8a2a18','#c0502a','#f0a070'],atm:'#ff9a6a'}),
+ P(4,{name:'HASK',tag:'HOSTILE',side:'foe',r:0.4,d:3.2,a:2.0,seed:81.0,c:['#2a2430','#3a3440','#5a5060','#8a8090'],atm:'#c0a0ff'}),
+ P(4,{name:'UMBRA',tag:'HOSTILE',side:'foe',r:0.6,d:5.4,a:4.5,seed:91.0,lava:true,c:['#120a1a','#1a1022','#2a1a3a','#4a3a5a'],atm:'#c060ff'}),
+ P(4,{name:'NERESH PRIME',tag:'HOSTILE',side:'foe',r:0.95,d:7.6,a:0.2,seed:101.0,gas:true,ring:true,c:['#6a4aa0','#c0a0f0','#3a2a6a','#ffd0ff'],atm:'#e0c0ff'}),
+ P(5,{name:'ORRIN I',tag:'UNCLAIMED',side:'neu',r:0.45,d:3.4,a:0.8,seed:111.0,c:['#3a2a1a','#7a5a3a','#a08060','#e0d0b0'],atm:'#f0d8b0'}),
+ P(5,{name:'ORRIN II',tag:'UNCLAIMED',side:'neu',r:0.7,d:5.8,a:3.3,seed:121.0,c:['#0a2a5a','#2a6ab0','#3a6a3a','#a0c080'],atm:'#80c0ff',sea:0.1,cloud:0.6}),
+ P(5,{name:'ORRIN III',tag:'UNCLAIMED',side:'neu',r:0.35,d:7.6,a:5.3,seed:131.0,c:['#6a7a8a','#9aaaba','#dae6f0','#ffffff'],atm:'#d8f0ff',sea:0.3}),
+];
+/* ---------- territory zones (Helldivers-style hatching) ---------- */
+const zoneMat=(c1,c2,split,center)=>new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+  uniforms:{uC1:{value:C(c1)},uC2:{value:C(c2)},uSplit:{value:split},uT:{value:0},uCen:{value:new THREE.Vector2(center.x,center.z)}},
+  vertexShader:`varying vec3 vW;void main(){vec4 w=modelMatrix*vec4(position,1.0);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
+  fragmentShader:`varying vec3 vW;uniform vec3 uC1,uC2;uniform float uSplit,uT;uniform vec2 uCen;
+    void main(){vec2 d=vW.xz-uCen;float r=length(d);float R=10.5;
+      float edge=smoothstep(1.2,0.0,abs(r-R))*0.5+smoothstep(0.08,0.0,abs(r-R))*0.5;float inside=smoothstep(R+0.6,R-0.6,r);
+      vec3 col=uC1;float front=0.0;
+      if(uSplit>0.5){float s=d.x+0.9*sin(d.y*0.55+uT*0.3)+0.5*sin(d.y*1.3-uT*0.2)-1.2;col=mix(uC1,uC2,smoothstep(-1.2,1.2,s));front=smoothstep(1.0,0.0,abs(s))*inside;}
+      float fade=smoothstep(R,R*0.35,r)*0.4+0.6;
+      float a=inside*0.07*fade+edge*0.16;
+      vec3 c=col*a+vec3(1.0,0.79,0.29)*front*(0.07+0.03*sin(uT*2.0));
+      gl_FragColor=vec4(c,1.0);}`});
+const zones=[];
+systems.forEach(s=>{if(s.side==='neu')return;const m=s.side==='war'?zoneMat(OWN.ally,OWN.foe,1,s.pos):zoneMat(OWN[s.side],OWN[s.side],0,s.pos);
+  const z=new THREE.Mesh(new THREE.CircleGeometry(10.9,96),m);z.rotation.x=-Math.PI/2;z.position.copy(s.pos);z.position.y=-0.02;scene.add(z);zones.push(m);});
+
+/* ---------- orbit rings + chart lines ---------- */
+function ring(center,r,op){const pts=[];for(let i=0;i<=192;i++){const a=i/192*TAU;pts.push(V3(center.x+Math.cos(a)*r,0,center.z+Math.sin(a)*r));}
+  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xbfe6ff,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false})));}
+/* ---------- stars ---------- */
+const starMats=[];
+systems.forEach(s=>{
+  const m=new THREE.ShaderMaterial({uniforms:{uT:{value:0},uA:{value:C(s.star[0])},uB:{value:C(s.star[1])}},
+    vertexShader:`varying vec3 vN;varying vec3 vO;varying vec3 vV;void main(){vO=position;vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}`,
+    fragmentShader:NOISE+`varying vec3 vN;varying vec3 vO;varying vec3 vV;uniform float uT;uniform vec3 uA,uB;
+    void main(){float n=fbm(vO*2.2+vec3(0.0,uT*0.05,uT*0.03));float n2=fbm(vO*6.0-uT*0.08);
+      vec3 col=mix(uA,uB,smoothstep(-0.3,0.5,n));col+=uB*smoothstep(0.2,0.7,n2)*0.3;
+      float f=pow(1.0-max(dot(vN,vV),0.0),2.0);col=mix(col,uA*0.9,f*0.6);gl_FragColor=vec4(col*1.15,1.0);}`});
+  starMats.push(m);
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(s.sr,48,32),m);mesh.position.copy(s.pos);scene.add(mesh);
+  const g1=sprite(GLOW,C(s.star[0]),s.sr*7.5,0.9),g2=sprite(SOFT,C(s.star[0]),s.sr*16,0.32),g3=sprite(GLOW,C(s.star[1]),s.sr*3.4,1);
+  [g1,g2,g3].forEach(g=>{g.position.copy(s.pos);scene.add(g);});
+  s.el=document.createElement('div');s.el.className='sys '+s.side;s.el.innerHTML=`<span class="n">${s.name}</span><span class="f">${s.tag}</span>`;labelsEl.appendChild(s.el);
+});
+
+/* ---------- planets ---------- */
+const planetVert=`varying vec3 vN;varying vec3 vO;varying vec3 vW;uniform float uSpin;
+  void main(){float c=cos(uSpin),s=sin(uSpin);vO=vec3(c*position.x-s*position.z,position.y,s*position.x+c*position.z);
+  vN=normalize(mat3(modelMatrix)*normal);vec4 w=modelMatrix*vec4(position,1.0);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`;
+const planetFrag=NOISE+`varying vec3 vN;varying vec3 vO;varying vec3 vW;
+  uniform vec3 cA,cB,cC,cD,uAtm,uStar;uniform float uSea,uCloud,uGas,uSeed,uT,uLava;
+  void main(){vec3 p=normalize(vO)*1.6+uSeed;vec3 col;
+    if(uGas>0.5){float w=fbm(p*1.2)*0.22;float b=sin((p.y+w)*9.0)+0.6*sin((p.y+w*1.6)*23.0);
+      col=mix(cA,cB,smoothstep(-1.2,1.2,b));col=mix(col,cC,smoothstep(0.6,1.5,b+fbm(p*3.0)*0.3)*0.5);
+      float storm=smoothstep(0.32,0.0,length((normalize(vO)-normalize(vec3(0.6,-0.25,0.75)))*vec3(1.0,1.8,1.0)));col=mix(col,cD,storm*0.85);}
+    else{float h=fbm(p)+0.35*fbm(p*4.0);
+      if(h<uSea){col=mix(cA,cB,smoothstep(uSea-0.5,uSea,h));}
+      else{float t=smoothstep(uSea,uSea+0.7,h);col=mix(cC,cD,t);col*=0.85+0.3*fbm(p*9.0);}
+      if(uLava>0.5){float cr=smoothstep(0.06,0.0,abs(fbm(p*2.5+3.0)));col=mix(col,vec3(1.0,0.45,0.1)*1.8,cr);}
+      float lat=abs(normalize(vO).y);col=mix(col,vec3(0.92,0.96,1.0),smoothstep(0.93,0.97,lat+fbm(p*3.0)*0.05)*step(0.5,1.0-uLava));}
+    if(uCloud>0.0){float cl=smoothstep(0.05,0.5,fbm(p*1.7+vec3(uT*0.02,0.0,0.0)+fbm(p*3.0)*0.5));col=mix(col,vec3(0.97,0.98,1.0),cl*uCloud);}
+    vec3 N=normalize(vN);vec3 L=normalize(uStar-vW);vec3 V=normalize(cameraPosition-vW);
+    float d=dot(N,L);float lit=smoothstep(-0.25,0.6,d);
+    vec3 night=col*0.3+uAtm*0.07;
+    if(uLava>0.5){night+=vec3(1.0,0.4,0.1)*smoothstep(0.06,0.0,abs(fbm(p*2.5+3.0)))*0.9;}
+    vec3 c=mix(night,col*1.12,lit);
+    float spec=pow(max(dot(reflect(-L,N),V),0.0),24.0)*step(fbm(p)+0.35*fbm(p*4.0),uSea)*(1.0-uGas);c+=vec3(1.0,0.9,0.75)*spec*0.6*lit;
+    float fr=pow(1.0-max(dot(N,V),0.0),2.6);c+=uAtm*fr*(0.35+0.9*smoothstep(-0.4,0.6,d));
+    gl_FragColor=vec4(c,1.0);}`;
+const planets=[];
+planetDefs.forEach(o=>{
+  const S=systems[o.sys];
+  const m=new THREE.ShaderMaterial({uniforms:{cA:{value:C(o.c[0])},cB:{value:C(o.c[1])},cC:{value:C(o.c[2])},cD:{value:C(o.c[3])},uAtm:{value:C(o.atm)},uStar:{value:S.pos.clone()},
+    uSea:{value:o.sea??-9},uCloud:{value:o.cloud??0},uGas:{value:o.gas?1:0},uLava:{value:o.lava?1:0},uSeed:{value:o.seed},uT:{value:0},uSpin:{value:0}},
+    vertexShader:planetVert,fragmentShader:planetFrag});
+  const g=new THREE.Group();g.add(new THREE.Mesh(new THREE.SphereGeometry(o.r,72,48),m));
+  g.add(sprite(SOFT,C(o.atm),o.r*3.4,0.3));
+  if(o.ring){const rg=new THREE.RingGeometry(o.r*1.35,o.r*2.25,128);const rm=new THREE.ShaderMaterial({transparent:true,side:THREE.DoubleSide,depthWrite:false,
+      uniforms:{uR:{value:new THREE.Vector2(o.r*1.35,o.r*2.25)},uC:{value:C(o.c[1])}},
+      vertexShader:`varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader:`varying vec3 vP;uniform vec2 uR;uniform vec3 uC;
+        void main(){float t=(length(vP.xy)-uR.x)/(uR.y-uR.x);float b=0.55+0.45*sin(t*60.0)*sin(t*13.0+1.0);float gap=smoothstep(0.02,0.0,abs(t-0.62));
+        float a=b*(1.0-gap)*smoothstep(0.0,0.06,t)*smoothstep(1.0,0.9,t);gl_FragColor=vec4(mix(vec3(0.95,0.85,0.7),uC,t),a*0.85);}`});
+    const r=new THREE.Mesh(rg,rm);r.rotation.x=-Math.PI/2+0.42;r.rotation.y=0.25;g.add(r);}
+  g.position.set(S.pos.x+Math.cos(o.a)*o.d,0,S.pos.z+Math.sin(o.a)*o.d);scene.add(g);
+  ring(S.pos,o.d,o.war?0.2:0.09);
+  const el=document.createElement('div');el.className='pl '+o.side;if(o.home)el.dataset.home='1';
+  el.innerHTML=(o.home?'<span class="base"><span>⌂</span></span>':'')+`<span class="n">${o.name}</span><span class="f">${o.tag}</span>`+
+    (o.war?'<span class="mini"><i style="width:100%;background:linear-gradient(90deg,#4fe3ff 0 62%,#ff4d5e 62%)"></i></span>':'');
+  labelsEl.appendChild(el);planets.push({...o,group:g,mat:m,el});
+});
+const kes=planets.find(p=>p.war),home=planets.find(p=>p.home);
+/* ---------- ship models: extruded, bevelled silhouettes ---------- */
+const M=(c,e=0x000000,ei=1,o={})=>new THREE.MeshStandardMaterial({color:c,roughness:0.38,metalness:0.45,emissive:e,emissiveIntensity:ei,...o});
+const MAT={
+  allyHull:M(0xeef2f6),allyPanel:M(0xb8c4d2),allyDark:M(0x3a4458),allyGlow:M(0x0a2a33,0x4fe3ff,2.4),
+  foeHull:M(0x2e2228),foePlate:M(0x55222e),foeGlow:M(0x330a0e,0xff3a4a,2.6),
+};
+function sil(pts,depth,bevel,m,y=0,mirror=true){const s=new THREE.Shape();const all=mirror?pts.concat(pts.slice().reverse().map(([x,z])=>[-x,z]).filter(([x])=>x!==0)):pts;
+  s.moveTo(all[0][0],all[0][1]);all.slice(1).forEach(([x,z])=>s.lineTo(x,z));s.closePath();
+  const g=new THREE.ExtrudeGeometry(s,{depth,bevelEnabled:true,bevelThickness:bevel,bevelSize:bevel*0.8,bevelSegments:3,curveSegments:4});
+  g.rotateX(Math.PI/2);g.translate(0,depth/2+y,0);g.computeVertexNormals();return new THREE.Mesh(g,m);}
+function pod(r,len,m,x,y,z){const g=new THREE.CapsuleGeometry(r,len,4,12);g.rotateX(Math.PI/2);const n=new THREE.Mesh(g,m);n.position.set(x,y,z);return n;}
+function ring_(r,m,x,y,z){const g=new THREE.TorusGeometry(r,r*0.28,8,16);const n=new THREE.Mesh(g,m);n.position.set(x,y,z);return n;}
+function engineGlow(g,color,x,y,z,size){const s=sprite(GLOW,color,size,1);s.position.set(x,y,z);g.add(s);g.userData.glows=(g.userData.glows||[]).concat(s);}
+function box(w,h,d,m,x=0,y=0,z=0){const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);b.position.set(x,y,z);return b;}
+MAT.allyTrim=MAT.allyDark;
+function strip(w,h,d,m,x,y,z){const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);b.position.set(x,y,z);return b;}
+
+function allyFrigate(){const g=new THREE.Group();
+  g.add(sil([[0,0.24],[0.03,0.14],[0.05,0.02],[0.15,-0.08],[0.16,-0.12],[0.07,-0.11],[0.055,-0.19],[0,-0.17]],0.022,0.01,MAT.allyHull,-0.012));
+  g.add(sil([[0,0.15],[0.022,0.06],[0.03,-0.12],[0,-0.13]],0.022,0.008,MAT.allyPanel,0.014));
+  g.add(strip(0.026,0.006,0.03,MAT.allyGlow,0,0.04,0.07));
+  g.add(strip(0.07,0.004,0.008,MAT.allyGlow,0.11,0.002,-0.095),strip(0.07,0.004,0.008,MAT.allyGlow,-0.11,0.002,-0.095));
+  g.add(pod(0.018,0.07,MAT.allyDark,0.05,0,-0.17),pod(0.018,0.07,MAT.allyDark,-0.05,0,-0.17));
+  engineGlow(g,0x4fe3ff,0.05,0,-0.23,0.15);engineGlow(g,0x4fe3ff,-0.05,0,-0.23,0.15);
+  return g;}
+function allyCruiser(){const g=new THREE.Group();
+  g.add(sil([[0,0.56],[0.05,0.42],[0.11,0.16],[0.12,-0.22],[0.17,-0.3],[0.17,-0.44],[0.06,-0.46],[0,-0.44]],0.07,0.022,MAT.allyHull,-0.035));
+  g.add(sil([[0,0.4],[0.06,0.2],[0.075,-0.3],[0,-0.32]],0.04,0.014,MAT.allyPanel,0.035));
+  g.add(sil([[0,-0.02],[0.04,-0.08],[0.045,-0.24],[0,-0.25]],0.06,0.012,MAT.allyHull,0.08));
+  g.add(strip(0.07,0.01,0.012,MAT.allyGlow,0,0.155,-0.07));
+  g.add(strip(0.004,0.014,0.46,MAT.allyGlow,0.122,0.0,-0.02),strip(0.004,0.014,0.46,MAT.allyGlow,-0.122,0.0,-0.02));
+  [0.26,0.12].forEach(z=>{g.add(new THREE.Mesh(new THREE.SphereGeometry(0.03,12,8,0,TAU,0,Math.PI/2),MAT.allyDark).translateY(0.07).translateZ(z));});
+  [-0.1,0,0.1].forEach(x=>{g.add(pod(0.034,0.08,MAT.allyDark,x,0,-0.48));g.add(ring_(0.034,MAT.allyGlow,x,0,-0.54));engineGlow(g,0x4fe3ff,x,0,-0.58,0.32);});
+  return g;}
+function foeRaider(){const g=new THREE.Group();
+  g.add(sil([[0,0.02],[0.05,0.1],[0.12,0.24],[0.18,0.05],[0.12,-0.12],[0.045,-0.1],[0,-0.2]],0.03,0.01,MAT.foeHull,-0.015));
+  g.add(sil([[0,0.0],[0.035,0.04],[0.08,0.14],[0.11,0.04],[0.07,-0.07],[0,-0.13]],0.02,0.006,MAT.foePlate,0.012));
+  const v1=strip(0.006,0.006,0.2,MAT.foeGlow,0.115,0.03,0.05);v1.rotation.y=-0.35;const v2=v1.clone();v2.position.x*=-1;v2.rotation.y*=-1;g.add(v1,v2);
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(0.02,12,8),MAT.foeGlow).translateY(0.03).translateZ(-0.04));
+  engineGlow(g,0xff3a4a,0,0,-0.22,0.2);
+  return g;}
+
+/* ---------- fleets ---------- */
+const ships=[];const up=V3(0,1,0),xa=V3(1,0,0);
+function orbiter(model,planet,o){model.scale.setScalar(o.scale||1);scene.add(model);
+  ships.push({g:model,foe:!!o.foe,planet,rad:planet.r*o.rad,inc:o.inc,node:o.node,ph:Math.random()*TAU,sp:o.sp,prev:V3(0,0,0)});}
+for(let i=0;i<9;i++)orbiter(allyFrigate(),kes,{rad:1.6+Math.random()*0.9,inc:(Math.random()-0.5)*1.0,node:Math.random()*TAU,sp:0.16+Math.random()*0.12,scale:1.25});
+for(let i=0;i<2;i++)orbiter(allyCruiser(),kes,{rad:2.4+i*0.35,inc:(i?0.25:-0.2),node:i*2.0,sp:0.07,scale:1.0});
+for(let i=0;i<6;i++)orbiter(foeRaider(),kes,{foe:true,rad:1.3+Math.random()*0.6,inc:(Math.random()-0.5)*1.2,node:Math.random()*TAU,sp:-(0.2+Math.random()*0.12),scale:1.35});
+// parked fleets
+orbiter(allyCruiser(),home,{rad:2.2,inc:0.15,node:0.5,sp:0.05,scale:0.9});
+orbiter(allyFrigate(),home,{rad:2.7,inc:-0.2,node:1.0,sp:0.09,scale:1.1});
+const varn=planets.find(p=>p.name==='VARN');
+for(let i=0;i<4;i++)orbiter(foeRaider(),varn,{foe:true,rad:2.0+i*0.25,inc:(Math.random()-0.5)*0.6,node:i,sp:-0.08,scale:1.2});
+
+// home station
+const station=new THREE.Group();{const r=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.03,8,40),MAT.allyHull);r.rotation.x=Math.PI/2;station.add(r);
+  station.add(new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.28,8),MAT.allyDark));
+  for(let i=0;i<4;i++){const s=box(0.18,0.012,0.012,MAT.allyTrim);s.rotation.y=i*Math.PI/4;station.add(s);}
+  station.add(box(0.05,0.012,0.12,MAT.allyGlow,0,0.15,0));}
+home.group.add(station);
+
+/* ---------- combat effects: tracers, impacts, scorches, flak ---------- */
+const bolts=[],fx=[];
+const boltGeo=new THREE.BoxGeometry(0.014,0.014,0.2);
+function fire(from,to,color,speed=7){const m=new THREE.MeshBasicMaterial({color,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false});
+  const b=new THREE.Mesh(boltGeo,m);b.position.copy(from);b.lookAt(to);const gl=sprite(GLOW,color,0.16,0.9);b.add(gl);scene.add(b);
+  bolts.push({b,from:from.clone(),to:to.clone(),t:0,dur:from.distanceTo(to)/speed,color});}
+function puff(pos,color,size,life,front=true){const s=sprite(GLOW,color,size,1);if(front){s.material.depthTest=false;s.renderOrder=5;}s.position.copy(pos);scene.add(s);fx.push({s,life,t:0,size});}
+const tmp=V3(0,0,0),camDir=V3(0,0,0);
+function surfacePoint(pl){camDir.copy(camera.position).sub(pl.group.position).normalize();
+  return V3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize().multiplyScalar(0.8).add(camDir).normalize().multiplyScalar(pl.r*1.01).add(pl.group.position);}
+let nextShot=0,nextFlak=0,nextFoe=0;
+
+/* =====================================================================
+   GAME LAYER (prototype). Real time runs ~60x: 1 real second = 1 game minute.
+   ===================================================================== */
+const $=s=>document.querySelector(s);
+const hudEl=$('#hud'),toastsEl=$('#toasts'),tagsEl=$('#tags'),modalWrap=$('#modalWrap'),sheetWrap=$('#sheetWrap'),battleWrap=$('#battleWrap');
+const rand=(a,b)=>a+Math.random()*(b-a),pick=a=>a[(Math.random()*a.length)|0],clamp=THREE.MathUtils.clamp;
+const nf=n=>Math.round(n).toLocaleString('en-US');
+function gt(sec){const g=Math.max(0,Math.round(sec*60));const h=Math.floor(g/3600),m=Math.floor(g%3600/60),s=g%60;return h?`${h}H ${String(m).padStart(2,'0')}M`:`${m}M ${String(s).padStart(2,'0')}S`;}
+let now=0;let sel=null;
+
+/* ---------- data ---------- */
+const TYPES=['inf','air','armor','art'];
+const TN={inf:'Infantry',air:'Air',armor:'Armor',art:'Artillery'};
+const OURS={inf:{atk:10,hp:50,pow:2,fuel:3,alloy:1},air:{atk:14,hp:40,pow:3,fuel:4,alloy:3},armor:{atk:12,hp:80,pow:3,fuel:3,alloy:4},art:{atk:16,hp:35,pow:3,fuel:4,alloy:2}};
+const BEATS={inf:'air',air:'armor',armor:'art',art:'inf'};
+const DROIDS={rivet:{n:'Rivet',ty:'inf',atk:14,hp:30},bulwark:{n:'Bulwark',ty:'inf',atk:10,hp:70},stomper:{n:'Stomper',ty:'armor',atk:30,hp:75},lobber:{n:'Lobber',ty:'art',atk:34,hp:30},gnat:{n:'Gnat Swarm',ty:'air',atk:22,hp:22}};
+const DK=Object.keys(DROIDS);
+const mult=(a,d)=>BEATS[a]===d?1.3:BEATS[d]===a?0.77:1;
+
+const S={res:{alloy:2400,fuel:1800,credits:1200,medals:0},troops:{inf:300,air:120,armor:100,art:120},wounded:[],
+  b:{cc:{n:'Command Center',l:3,d:'Caps every other building. More armies at L5.'},barracks:{n:'Barracks',l:2,d:'Trains Infantry.',ty:'inf'},hangar:{n:'Hangar',l:1,d:'Trains Air.',ty:'air'},
+     bay:{n:'Vehicle Bay',l:1,d:'Trains Armor.',ty:'armor'},works:{n:'Artillery Works',l:1,d:'Trains Artillery.',ty:'art'},refinery:{n:'Alloy Refinery',l:2,d:'Produces Alloy.'},
+     extractor:{n:'Fuel Extractor',l:2,d:'Produces Fuel.'},hub:{n:'Trade Hub',l:1,d:'Produces Credits.'},lab:{n:'Research Lab',l:1,d:'Runs research.'},
+     hospital:{n:'Field Hospital',l:1,d:'Heals wounded troops.'},uplink:{n:'Orbital Uplink',l:3,d:'Unlocks support weapons. EMP at L4, Beacon at L5.'},recruit:{n:'Recruitment Office',l:1,d:'Recruits commanders.'}},
+  build:null,train:{},research:null,done:{atk:0,march:0,barrage:0},
+  cmds:[{n:'Cmdr. Vale',r:'Standard',ty:'armor',v:10},{n:'Cmdr. Osei',r:'Elite',ty:'air',v:12}],freeRecruit:true,tokens:0,
+  armies:[],battles:[],stationed:{},contrib:0,
+  orders:[{t:'Win 2 battles',k:'win',need:2,have:0,rw:{alloy:800,fuel:600},c:false},{t:'Fire 4 support strikes',k:'strike',need:4,have:0,rw:{medals:60},c:false},
+    {t:'Upgrade 2 buildings',k:'upg',need:2,have:0,rw:{credits:900},c:false},{t:'Train 150 troops',k:'train',need:150,have:0,rw:{fuel:900},c:false},
+    {t:'Recruit a commander',k:'recruit',need:1,have:0,rw:{tokens:1},c:false}],chests:0};
+const RESEARCH=[{k:'atk',n:'Hardened Rounds',d:'+10% attack for all troops',cost:{credits:600},t:20},{k:'march',n:'Jump Calibration',d:'Marches 20% faster',cost:{credits:500},t:16},{k:'barrage',n:'Dense Barrage',d:'Orbital Barrage hits 30% harder',cost:{credits:700},t:22}];
+const WEAPONS=[
+ {k:'barrage',n:'BARRAGE',lv:1,cd:25,svg:'<path d="M12 2v13M8 11l4 4 4-4M5 20h14"/>'},
+ {k:'shield',n:'SHIELD',lv:3,cd:40,svg:'<path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/>'},
+ {k:'emp',n:'EMP',lv:4,cd:55,svg:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M5 19l2-2"/>'},
+ {k:'beacon',n:'BEACON',lv:5,cd:45,svg:'<circle cx="12" cy="12" r="7"/><path d="M12 5v14M5 12h14"/>'}];
+const cdUntil={};
+
+/* planet game state */
+const DIFF={'KESTREL IV':1.0,'KESTREL II':0.6,'KESTREL VI':1.3,'VARN':1.5,'MYRE':1.2,'GLOAM':1.8,'HASK':1.4,'UMBRA':1.7,'NERESH PRIME':2.2};
+const BIAS={'KESTREL VI':{gnat:2.2},'VARN':{stomper:2},'MYRE':{lobber:1.8},'GLOAM':{gnat:1.6,bulwark:1.5},'HASK':{bulwark:2},'UMBRA':{stomper:1.6,lobber:1.4},'NERESH PRIME':{stomper:1.5,gnat:1.5}};
+const BASE_MIX={rivet:220,bulwark:36,stomper:32,lobber:40,gnat:72};
+planets.forEach(p=>{p.ctrl=p.side==='ally'?100:p.side==='neu'?null:p.name==='KESTREL IV'?62:p.name==='KESTREL II'?40:0;p.diff=DIFF[p.name]||0;
+  p.mix={};DK.forEach(k=>p.mix[k]=Math.round(BASE_MIX[k]*p.diff*((BIAS[p.name]||{})[k]||1)));});
+function detach(p){const d={};DK.forEach(k=>d[k]=Math.round(p.mix[k]*rand(0.85,1.15)));return d;}
+
+/* ---------- labels: rebuild with live control bar, make tappable ---------- */
+planets.forEach(p=>{p.el.innerHTML=(p.home?'<span class="base"><span>⌂</span></span>':'')+`<span class="n">${p.name}</span><span class="f"></span><span class="mini"><i></i></span>`;refreshLabel(p);});
+function refreshLabel(p){
+  if(p.ctrl!=null&&p.side!=='neu'){p.side=p.ctrl>=100?'ally':p.ctrl<=0?'foe':'war';}
+  p.el.className='pl '+p.side+(sel===p?' sel':'');
+  p.el.querySelector('.f').textContent=p.home?'YOUR BASE':p.side==='war'?`${Math.round(p.ctrl)}% HELD`:p.side==='ally'?'CONCORD':p.side==='foe'?'ASSEMBLY':'UNCLAIMED';
+  const i=p.el.querySelector('.mini i');if(i)i.style.width=(p.ctrl||0)+'%';
+}
+
+/* ---------- toasts, tags ---------- */
+function toast(msg,kind=''){const d=document.createElement('div');d.className='toast '+kind;d.textContent=msg;toastsEl.appendChild(d);
+  while(toastsEl.children.length>3)toastsEl.firstChild.remove();setTimeout(()=>d.remove(),3700);}
+const tagQ=[];function tag(text,pos,color){const d=document.createElement('div');d.className='fxtag';d.textContent=text;if(color)d.style.color=color;tagsEl.appendChild(d);tagQ.push({d,pos:pos.clone(),t:0});setTimeout(()=>{d.remove();tagQ.splice(tagQ.findIndex(q=>q.d===d),1);},1400);}
+
+/* ---------- economy ---------- */
+function gain(r,why){Object.entries(r).forEach(([k,v])=>{if(k==='tokens')S.tokens+=v;else S.res[k]=(S.res[k]||0)+v;});if(why)toast(why,'gold');renderTop();}
+function can(cost){return Object.entries(cost).every(([k,v])=>S.res[k]>=v);}
+function spend(cost){Object.entries(cost).forEach(([k,v])=>S.res[k]-=v);renderTop();}
+function costStr(c){return Object.entries(c).map(([k,v])=>`${nf(v)} ${k.toUpperCase()}`).join(' · ');}
+const RES_UI=[['alloy','#c9d4e6'],['fuel','#ffb36b'],['credits','#ffd86b'],['medals','#7dffb0']];
+function power(){let p=0;TYPES.forEach(t=>p+=S.troops[t]*OURS[t].pow);S.armies.forEach(a=>TYPES.forEach(t=>p+=a.troops[t]*OURS[t].pow));
+  Object.values(S.stationed).forEach(st=>TYPES.forEach(t=>p+=st.troops[t]*OURS[t].pow));S.battles.forEach(b=>TYPES.forEach(t=>p+=b.ours[t]*OURS[t].pow));
+  Object.values(S.b).forEach(b=>p+=b.l*b.l*40);p+=Object.values(S.done).reduce((a,b)=>a+b,0)*300;p+=S.cmds.length*250;return Math.round(p);}
+let lastPow=0;
+function renderTop(){const pw=power(),pe=$('#power');pe.textContent=nf(pw);if(lastPow&&pw>lastPow){pe.classList.add('up');clearTimeout(pe._t);pe._t=setTimeout(()=>pe.classList.remove('up'),900);}lastPow=pw;
+  $('#res').innerHTML=RES_UI.map(([k,c])=>`<span><i style="background:${c}"></i>${nf(S.res[k])}</span>`).join('');}
+function prodTick(dt){const L=S.b;S.res.alloy+=3*L.refinery.l*dt;S.res.fuel+=2.5*L.extractor.l*dt;S.res.credits+=1.5*L.hub.l*dt;}
+
+/* ---------- orders ---------- */
+function bump(k,n=1){S.orders.forEach(o=>{if(o.k===k&&!o.c&&o.have<o.need){o.have=Math.min(o.need,o.have+n);if(o.have>=o.need)toast(`Order complete: ${o.t}. Claim it in Orders.`,'gold');}});renderBadge();}
+function renderBadge(){const n=S.orders.filter(o=>!o.c&&o.have>=o.need).length+(S.freeRecruit?1:0);const b=$('#ordBadge');b.hidden=!n;b.textContent=n;}
+
+/* ---------- planet selection sheet ---------- */
+function select(p){const prev=sel;sel=p;if(prev)refreshLabel(prev);if(p){refreshLabel(p);goal={t:p.group.position.clone(),d:Math.min(dist,18)};}renderSheet();renderTarget();}
+function renderSheet(){
+  if(!sel){sheetWrap.innerHTML='';return;}const p=sel;
+  const st=S.stationed[p.name];const war=p.side==='war'||p.side==='foe';
+  let h=`<div class="sheet" role="dialog" aria-label="${p.name}"><button class="x" id="sx" aria-label="Close">✕</button><span class="k">${p.side==='war'?'CONTESTED':p.side==='foe'?'ASSEMBLY-HELD':p.side==='ally'?'CONCORD-HELD':'UNCLAIMED'} · ${systems[p.sys].name}</span><span class="t">${p.name}</span>`;
+  if(p.ctrl!=null)h+=`<div class="ctl"><div class="bar"><i style="width:${p.ctrl}%"></i></div><div class="row"><span>${Math.round(p.ctrl)}% CONCORD CONTROL</span><span>${p.side==='war'?'DROIDS PUSHING':''}</span></div></div>`;
+  if(war){h+=`<div class="intel"><span class="h">INTEL · EXPECTED WAVE</span><span class="h">TYPE</span><span class="h">COUNT</span>`+DK.map(k=>`<span>${DROIDS[k].n}</span><span class="ty">${TN[DROIDS[k].ty]}</span><span>~${nf(p.mix[k])}</span>`).join('')+`</div>`;
+    const best=TYPES.slice().sort((a,b)=>tw(p,b)-tw(p,a))[0];h+=`<span class="note">Counter tip: ${TN[best]} hits this mix hardest.</span>`;}
+  if(st)h+=`<span class="note" style="color:#bff6ff">Your garrison: ${TYPES.map(t=>st.troops[t]?`${nf(st.troops[t])} ${TN[t]}`:'').filter(Boolean).join(', ')}</span>`;
+  h+=`<div class="acts">`;
+  if(war)h+=`<button class="btn pri" id="sAtk">Attack</button>`;
+  if(p.side==='war'||p.side==='ally')h+=`<button class="btn" id="sSta">Station</button>`;
+  if(st)h+=`<button class="btn" id="sRec">Recall</button>`;
+  if(p.home)h+=`<button class="btn pri" id="sBase">Enter base</button>`;
+  h+=`</div>`;if(p.side==='neu')h+=`<span class="note">No droid presence. Nothing to fight here yet.</span>`;
+  sheetWrap.innerHTML=h+`</div>`;
+  $('#sx').onclick=()=>select(null);
+  if($('#sAtk'))$('#sAtk').onclick=()=>openSend(p,'attack');
+  if($('#sSta'))$('#sSta').onclick=()=>openSend(p,'station');
+  if($('#sRec'))$('#sRec').onclick=()=>recall(p);
+  if($('#sBase'))$('#sBase').onclick=openBase;
+}
+function tw(p,t){let s=0;DK.forEach(k=>s+=p.mix[k]*DROIDS[k].hp*mult(t,DROIDS[k].ty));return s;}
+
+/* ---------- modals ---------- */
+function modal(html,onClose){modalWrap.innerHTML=`<div class="scrim" id="scrim"><div class="modal" role="dialog" aria-modal="true">${html}<button class="x" id="mx" aria-label="Close">✕</button></div></div>`;
+  const close=()=>{modalWrap.innerHTML='';onClose&&onClose();};$('#mx').onclick=close;$('#scrim').onclick=e=>{if(e.target.id==='scrim')close();};return close;}
+function closeModal(){modalWrap.innerHTML='';}
+
+/* ---------- sending armies ---------- */
+function freeCmd(){const busy=new Set([...S.armies.map(a=>a.cmd),...Object.values(S.stationed).map(s=>s.cmd)]);return S.cmds.find(c=>!busy.has(c));}
+function slots(){return S.b.cc.l>=5?3:2;}
+function deployed(){return S.armies.length+S.battles.length+Object.keys(S.stationed).length;}
+function openSend(p,mode){
+  if(deployed()>=slots()){toast(`All ${slots()} army slots are out. Upgrade the Command Center to L5 for a third.`,'warn');return;}
+  const cmd=freeCmd();if(!cmd){toast('Every army needs a commander. Recruit one first.','warn');return;}
+  const dist_=home.group.position.distanceTo(p.group.position);const tSec=(3+dist_*0.22)*(S.done.march?0.8:1);
+  const fuelCost=Math.round(40+dist_*6);
+  let html=`<span class="k">${mode==='attack'?'ATTACK':'STATION'} · ${p.name}</span><h3>Send an army</h3>
+   <p>${mode==='attack'?'Your army flies out, fights one droid wave, and survivors return home. A win pushes control toward the Concord.':'Your army digs in and defends against droid assaults until you recall it. It will take losses.'}</p>
+   <div class="grid2">${TYPES.map(t=>`<div class="slider"><label for="r_${t}">${TN[t]}</label><input type="range" id="r_${t}" min="0" max="${S.troops[t]}" value="${S.troops[t]}" step="1"><output id="o_${t}">${nf(S.troops[t])}</output></div>`).join('')}</div>
+   <p>Commander: <b style="color:#fff">${cmd.n}</b> (${cmd.r}, +${cmd.v}% ${TN[cmd.ty]}) · Travel: <b style="color:#fff">${gt(tSec)}</b> · Fuel: ${fuelCost}</p>
+   <div class="foot"><span class="note" style="font-size:1cqw">Tip: fire orbital support while the battle runs.</span><button class="btn pri" id="go">Send</button></div>`;
+  modal(html);TYPES.forEach(t=>{const r=$('#r_'+t);r.oninput=()=>$('#o_'+t).textContent=nf(r.value);});
+  $('#go').onclick=()=>{const tr={};TYPES.forEach(t=>tr[t]=+$('#r_'+t).value);const tot=TYPES.reduce((a,t)=>a+tr[t],0);
+    if(!tot){toast('Pick some troops to send.','warn');return;}if(S.res.fuel<fuelCost){toast('Not enough Fuel.','warn');return;}
+    S.res.fuel-=fuelCost;TYPES.forEach(t=>S.troops[t]-=tr[t]);closeModal();launch(home,p,tr,mode,cmd,tSec,'out');select(null);toast(`Army away: ${mode==='attack'?'attacking':'stationing at'} ${p.name}. ETA ${gt(tSec)}.`);renderTop();};
+}
+function makeFleet(){const g=new THREE.Group();const c=allyCruiser();g.add(c);[[0.32,-0.3],[-0.32,-0.3],[0.0,-0.62],[0.5,-0.7]].forEach(([x,z])=>{const f=allyFrigate();f.scale.setScalar(1.25);f.position.set(x,0.04,z);g.add(f);});g.scale.setScalar(1.1);scene.add(g);return g;}
+const curve=new THREE.QuadraticBezierCurve3(V3(0,0,0),V3(0,0,0),V3(0,0,0));
+function arc(a,b,u,out){const A=a.group.position,B=b.group.position,dir=B.clone().sub(A).normalize();
+  curve.v0.copy(A).addScaledVector(dir,a.r*2.4).setY(0.3);curve.v2.copy(B).addScaledVector(dir,-b.r*2.6).setY(0.3);
+  const side=V3(-dir.z,0,dir.x);curve.v1.copy(curve.v0).lerp(curve.v2,0.5).add(V3(0,1.4,0)).addScaledVector(side,A.distanceTo(B)*0.12);return curve.getPoint(u,out);}
+function launch(from,to,troops,mode,cmd,dur,dir){
+  const g=makeFleet();const el=document.createElement('div');el.className='army';labelsEl.appendChild(el);
+  const trail=[];for(let i=0;i<18;i++){const s=sprite(SOFT,0x4fe3ff,0.4,0);scene.add(s);trail.push(s);}
+  S.armies.push({from,to,troops,mode,cmd,t0:now,dur,dir,g,el,trail});renderArmies();}
+function endMarch(a){scene.remove(a.g);a.trail.forEach(s=>scene.remove(s));a.el.remove();S.armies.splice(S.armies.indexOf(a),1);
+  if(a.dir==='back'){TYPES.forEach(t=>S.troops[t]+=a.troops[t]);toast(`Army home with ${nf(TYPES.reduce((s,t)=>s+a.troops[t],0))} troops.`);}
+  else if(a.mode==='station'){const st=S.stationed[a.to.name];if(st)TYPES.forEach(t=>st.troops[t]+=a.troops[t]);else S.stationed[a.to.name]={troops:a.troops,cmd:a.cmd,planet:a.to};toast(`Garrison in place on ${a.to.name}.`);}
+  else startBattle(a);renderArmies();renderTop();if(sel)renderSheet();}
+function recall(p){const st=S.stationed[p.name];if(!st)return;delete S.stationed[p.name];const d=home.group.position.distanceTo(p.group.position);
+  launch(p,home,st.troops,'return',st.cmd,(3+d*0.22)*(S.done.march?0.8:1),'back');renderSheet();toast(`Garrison recalled from ${p.name}.`);}
+function renderArmies(){const rows=[];S.armies.forEach(a=>rows.push(`<div>${a.dir==='back'?'↩ RETURNING':a.mode==='attack'?'→ ATTACK':'→ STATION'} ${a.dir==='back'?'':a.to.name} · ${gt(a.dur-(now-a.t0))}</div>`));
+  S.battles.forEach(b=>rows.push(`<div style="border-color:#ffc94a88;color:#ffe3a0">⚔ BATTLE · ${b.p.name} · R${Math.min(10,b.round+1)}/10</div>`));
+  Object.values(S.stationed).forEach(s=>rows.push(`<div>⛨ GARRISON · ${s.planet.name}</div>`));
+  rows.push(`<div style="opacity:.7">ARMIES ${deployed()}/${slots()}</div>`);$('#armies').innerHTML=rows.join('');}
+
+/* ---------- battles ---------- */
+const CHAT={start:['Unit 4471: Requesting reinforcements. Unit 4472: I am the reinforcements. Unit 4471: Oh no.','Overseer: Excellent work, everyone. Overseer: Where is everyone?','Rivet 88: Proceeding as instructed. Rivet 88: What were the instructions?','Stomper 9: Sorry. Sorry. Sorry. Sorry.'],
+ mid:['Lobber 12: Target acquired. Correction: target was a rock. Rock defeated.','Rivet 301: I have located the enemy. They have also located me.','Gnat Swarm: We are many. We are many. We are... fewer.','Bulwark 7: My shield is undefeated. My shield is now two shields.','Overseer: Hold the line! Overseer: Which line?'],
+ barrage:['Lobber 3: Was that thunder? Thunder is not on the schedule.','Rivet 12: The sky is attacking. Filing complaint with the sky.'],
+ emp:['Rivet 5: Rebooting. Rebooting. Hello. Who am I.','Overseer: Status report! Unit 40: Status is nap.'],
+ win:['Last Rivet: Tactical retreat. Retreat was not tactical.','Overseer: This is fine. We will simply build more of us.'],
+ loss:['Rivet 1009: Victory! Please do not check the numbers.','Overseer: Another flawless triumph for the Assembly. Mostly flawless.']};
+function startBattle(a){const p=a.to;const det=detach(p);const ours={...a.troops};
+  const b={p,a,det,det0:{...det},ours,ours0:{...ours},round:0,next:now+0.6,shield:0,emp:false,beacon:0,killed:0,lost:0,orbit:[],chat:[pick(CHAT.start)],strikes:0};
+  for(let i=0;i<5;i++){const m=i?allyFrigate():allyCruiser();orbiter(m,p,{rad:1.7+Math.random()*0.8,inc:(Math.random()-0.5)*0.9,node:Math.random()*TAU,sp:0.2+Math.random()*0.1,scale:i?1.25:1});b.orbit.push(ships[ships.length-1]);}
+  S.battles.push(b);toast(`Battle started on ${p.name}. Fire support now!`,'gold');renderBattle();renderTarget();}
+function hp(stack,isDroid){let s=0;for(const k in stack)s+=stack[k]*(isDroid?DROIDS[k].hp:OURS[k].hp);return s;}
+function round(b){
+  const atkBuff=1+(S.done.atk?0.1:0);
+  // our damage
+  const dDroidHP=hp(b.det,true);let dmg={};DK.forEach(k=>dmg[k]=0);
+  TYPES.forEach(t=>{const c=b.ours[t];if(!c)return;let a=c*OURS[t].atk*atkBuff*(b.a.cmd.ty===t?1+b.a.cmd.v/100:1);
+    DK.forEach(k=>{const share=dDroidHP?b.det[k]*DROIDS[k].hp/dDroidHP:0;dmg[k]+=a*share*mult(t,DROIDS[k].ty)*(b.beacon>0&&BEATS[t]===DROIDS[k].ty?2:1);});});
+  DK.forEach(k=>{const kill=Math.min(b.det[k],dmg[k]*0.17/DROIDS[k].hp);b.det[k]-=kill;b.killed+=kill;});
+  // droid damage
+  if(!b.emp){const ourHP=hp(b.ours,false);const od={};TYPES.forEach(t=>od[t]=0);
+    DK.forEach(k=>{const a=b.det[k]*DROIDS[k].atk;TYPES.forEach(t=>{const share=ourHP?b.ours[t]*OURS[t].hp/ourHP:0;od[t]+=a*share*mult(DROIDS[k].ty,t);});});
+    TYPES.forEach(t=>{const loss=Math.min(b.ours[t],od[t]*0.12*(b.shield>0?0.6:1)/OURS[t].hp);b.ours[t]-=loss;b.lost+=loss;});}
+  else{b.emp=false;b.chat.push(pick(CHAT.emp));}
+  if(b.shield>0)b.shield--;if(b.beacon>0)b.beacon--;
+  b.round++;if(b.round%3===1&&b.round<9)b.chat.push(pick(CHAT.mid));
+  const dr=hp(b.det,true)/hp(b.det0,true),or=hp(b.ours,false)/hp(b.ours0,false);
+  if(dr<0.05||or<0.2||b.round>=10)finish(b,dr,or);else renderBattle();renderArmies();}
+function finish(b,dr,or){
+  S.battles.splice(S.battles.indexOf(b),1);b.orbit.forEach(s=>{scene.remove(s.g);ships.splice(ships.indexOf(s),1);});
+  const res=dr<0.05?'win':or<0.2?'loss':(dr<or?'edge':'hold');
+  const killRatio=1-dr;const p=b.p;
+  const gainPct=res==='win'?6/Math.sqrt(p.diff)*killRatio:res==='edge'?2.5*killRatio:res==='hold'?1*killRatio:0.4*killRatio;
+  const before=p.ctrl;p.ctrl=clamp(p.ctrl+gainPct,0,100);S.contrib+=p.ctrl-before;
+  const medals=Math.round((res==='win'?40:res==='edge'?18:8)*p.diff+b.strikes*5);
+  const loot={alloy:Math.round(600*p.diff*killRatio),fuel:Math.round(400*p.diff*killRatio),medals};
+  const lostT={};let lostTot=0,wTot=0;TYPES.forEach(t=>{const l=b.ours0[t]-b.ours[t];lostT[t]=l;lostTot+=l;});
+  const wounded={};TYPES.forEach(t=>{wounded[t]=Math.floor(lostT[t]*0.35);wTot+=wounded[t];b.ours[t]=Math.floor(b.ours[t]);});
+  if(wTot)S.wounded.push({troops:wounded,at:now+12+6/S.b.hospital.l});
+  gain(loot);if(res==='win')bump('win');
+  const d=home.group.position.distanceTo(p.group.position);
+  launch(p,home,b.ours,'return',b.a.cmd,(3+d*0.22)*(S.done.march?0.8:1),'back');
+  refreshLabel(p);renderOp();renderBattle();renderArmies();renderTop();
+  const title={win:'Victory',edge:'Pushed back',hold:'Droids held',loss:'Repelled'}[res];
+  const cls=res==='win'||res==='edge'?'win':'loss';
+  const quote=pick(res==='win'||res==='edge'?CHAT.win:CHAT.loss);
+  modal(`<span class="k">BATTLE REPORT · ${p.name} · ${b.round} ROUNDS</span><h3 class="${cls}">${title}</h3>
+    <p>${res==='win'?'The droid wave broke. Kestrel holds a little more firmly because of you.':res==='edge'?'You out-fought the wave but didn\'t break it. Control still moved your way.':res==='hold'?'The droids held their ground. Bring counters or support next time.':'Your army broke and pulled out. Scout the wave and bring the right counters.'}</p>
+    <div class="stats"><div class="stat"><span class="l">DROIDS DESTROYED</span><span class="v">${nf(b.killed)}</span></div>
+    <div class="stat"><span class="l">YOUR LOSSES</span><span class="v">${nf(lostTot)}</span><span class="l">${nf(wTot)} WOUNDED, HEALING</span></div>
+    <div class="stat"><span class="l">CONTROL</span><span class="v win">+${(p.ctrl-before).toFixed(1)}%</span><span class="l">NOW ${Math.round(p.ctrl)}%</span></div>
+    <div class="stat"><span class="l">MEDALS</span><span class="v" style="color:#7dffb0">+${medals}</span><span class="l">${b.strikes} STRIKE BONUS</span></div></div>
+    <p>Loot: ${nf(loot.alloy)} Alloy · ${nf(loot.fuel)} Fuel. Survivors are flying home.</p>
+    <div class="quote">INTERCEPTED · ${quote}</div>
+    <div class="foot"><span></span><button class="btn pri" id="ok">Back to the war</button></div>`);
+  $('#ok').onclick=closeModal;
+  if(p.ctrl>=100&&before<100)setTimeout(()=>liberated(p),400);
+}
+function liberated(p){refreshLabel(p);gain({alloy:3000,fuel:2000,credits:1500,medals:250});S.tokens+=2;
+  modal(`<span class="k">MAJOR OPERATION COMPLETE</span><h3 class="win">${p.name} liberated</h3><p>The Concord holds the world. The front line moves outward and new planets become contested. Every contributor is rewarded by share.</p>
+   <div class="stats"><div class="stat"><span class="l">YOUR SHARE</span><span class="v">${share().toFixed(1)}%</span></div><div class="stat"><span class="l">MEDALS</span><span class="v" style="color:#7dffb0">+250</span></div><div class="stat"><span class="l">RECRUIT TOKENS</span><span class="v">+2</span></div><div class="stat"><span class="l">RESOURCES</span><span class="v">+6.5K</span></div></div>
+   <div class="foot"><span></span><button class="btn pri" id="ok">Onward</button></div>`);$('#ok').onclick=closeModal;
+  const k6=planets.find(q=>q.name==='KESTREL VI');if(k6.ctrl<=0){k6.ctrl=8;refreshLabel(k6);}}
+function renderBattle(){
+  const b=S.battles.find(x=>x===S.battles[S.battles.length-1]);if(!b){battleWrap.innerHTML='';return;}
+  const o=hp(b.ours,false)/hp(b.ours0,false),d=hp(b.det,true)/hp(b.det0,true);
+  battleWrap.innerHTML=`<div class="battle"><div class="k"><span>BATTLE · ${b.p.name}</span><span>ROUND ${Math.min(10,b.round+1)}/10</span></div>
+   <div class="rounds">${Array.from({length:10},(_,i)=>`<i class="${i<b.round?'on':''}"></i>`).join('')}</div>
+   <div class="side"><span style="color:#4fe3ff">CONCORD</span><span class="b"><i style="width:${o*100}%;background:#4fe3ff"></i></span><span class="num">${nf(TYPES.reduce((s,t)=>s+b.ours[t],0))}</span></div>
+   <div class="side"><span style="color:#ff4d5e">ASSEMBLY</span><span class="b"><i style="width:${d*100}%;background:#ff4d5e"></i></span><span class="num">${nf(DK.reduce((s,k)=>s+b.det[k],0))}</span></div>
+   <div class="chatter">${b.chat.slice(-2).map(c=>`<div>▸ ${c}</div>`).join('')}</div>
+   ${b.shield>0?'<span class="note" style="color:#4fe3ff">SHIELD UPLINK ACTIVE · '+b.shield+' ROUNDS</span>':''}${b.beacon>0?'<span class="note" style="color:#ffc94a">TARGETING BEACON · COUNTERS x2</span>':''}</div>`;}
+
+/* ---------- support weapons ---------- */
+const RANGE=new Set([0,1,3]);// systems in range: Vega, Kestrel, Talos
+function supportTarget(){if(S.battles.length)return{kind:'battle',b:S.battles[S.battles.length-1],p:S.battles[S.battles.length-1].p};
+  if(sel&&(sel.side==='war'||sel.side==='foe'))return{kind:'ambient',p:sel};return{kind:'ambient',p:kes};}
+function renderTarget(){const t=supportTarget();$('#tgt').textContent=t.p.name+(t.kind==='battle'?' · YOUR BATTLE':'');}
+function renderAssets(){$('#assets').innerHTML=WEAPONS.map(w=>{const locked=S.b.uplink.l<w.lv;const cd=Math.max(0,(cdUntil[w.k]||0)-now);
+  return `<button class="asset ${!locked&&!cd?'ready':''}" data-w="${w.k}" aria-label="${w.n}${locked?' locked':''}"><svg viewBox="0 0 24 24" fill="none" stroke="${!locked&&!cd?'#ffc94a':'#c9d4e6'}" stroke-width="1.6">${w.svg}</svg>${locked?`<span class="cd">L${w.lv}</span>`:cd?`<span class="cd">${gt(cd)}</span>`:''}<span class="lbl">${w.n}</span></button>`;}).join('');
+  document.querySelectorAll('.asset').forEach(el=>el.onclick=()=>fireWeapon(WEAPONS.find(w=>w.k===el.dataset.w),el));}
+function fireWeapon(w,el){
+  if(S.b.uplink.l<w.lv){toast(`${w.n} unlocks at Orbital Uplink L${w.lv}.`,'warn');return;}
+  if((cdUntil[w.k]||0)>now){toast(`${w.n} is recharging.`,'warn');return;}
+  const t=supportTarget(),p=t.p;
+  if(!RANGE.has(p.sys)){toast(`${p.name} is out of range. Hold planets nearer to it to extend your reach.`,'warn');return;}
+  if(t.kind==='ambient'&&p.side!=='war'){toast('Support needs a live battle. Pick a contested planet.','warn');return;}
+  cdUntil[w.k]=now+w.cd*(1-0.05*(S.b.uplink.l-3));el.classList.add('fire');bump('strike');
+  const pos=p.group.position;
+  if(w.k==='barrage'){for(let i=0;i<22;i++)setTimeout(()=>{const to=surfacePoint(p);const from=to.clone().add(V3(rand(-1,1),9,rand(-1,1)));fire(from,to,0xffe08a,26);},i*45);}
+  if(w.k==='shield'){halo(p,0x4fe3ff,2.6,2.2);}
+  if(w.k==='emp'){shock(p,0x8ab4ff);}
+  if(w.k==='beacon'){halo(p,0xffc94a,1.8,2.8);}
+  if(t.kind==='battle'){const b=t.b;b.strikes++;
+    if(w.k==='barrage'){const k=0.15*(S.done.barrage?1.3:1);DK.forEach(d=>{const x=b.det[d]*k;b.det[d]-=x;b.killed+=x;});b.chat.push(pick(CHAT.barrage));tag('BARRAGE · −'+Math.round(k*100)+'% DROIDS',pos);}
+    if(w.k==='shield'){b.shield=3;tag('SHIELD UPLINK · 3 ROUNDS',pos,'#4fe3ff');}
+    if(w.k==='emp'){b.emp=true;tag('EMP · DROIDS SKIP A ROUND',pos,'#8ab4ff');}
+    if(w.k==='beacon'){b.beacon=3;tag('BEACON · COUNTERS x2',pos);}
+    renderBattle();}
+  else{const d=w.k==='barrage'?0.6:0.3;const before=p.ctrl;p.ctrl=clamp(p.ctrl+d,0,100);S.contrib+=p.ctrl-before;gain({medals:5});refreshLabel(p);renderOp();
+    tag(`+${d}% CONTROL · +5 MEDALS`,pos);toast(`Your ${w.n.toLowerCase()} hit the allied battle at ${p.name}. Credited to you.`,'gold');}
+  renderAssets();}
+const halos=[];function halo(p,color,size,life){const s=sprite(GLOW,color,p.r*size*3,0.9);s.position.copy(p.group.position);scene.add(s);halos.push({s,t:0,life,base:p.r*size*3});}
+const shocks=[];function shock(p,color){const m=new THREE.MeshBasicMaterial({color,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+  const r=new THREE.Mesh(new THREE.RingGeometry(0.9,1,64),m);r.rotation.x=-Math.PI/2;r.position.copy(p.group.position);scene.add(r);shocks.push({r,t:0,R:p.r});}
+
+/* ---------- operation + droid assaults ---------- */
+function share(){return S.contrib/(S.contrib+38)*100*0.6;}
+function renderOp(){$('#opbar').style.width=kes.ctrl+'%';$('#opctl').textContent=Math.round(kes.ctrl)+'% HELD';$('#opshare').textContent=share().toFixed(1)+'% · '+S.contrib.toFixed(1)+' PTS';}
+let nextAssault=20;
+function assaults(){planets.filter(p=>p.side==='war').forEach(p=>{
+  let loss=rand(0.8,2.0);const others=rand(0.5,1.4);const st=S.stationed[p.name];
+  if(st){const tot=TYPES.reduce((s,t)=>s+st.troops[t],0);const block=Math.min(1,tot/400);loss*=1-0.7*block;
+    let dead=0;TYPES.forEach(t=>{const l=Math.floor(st.troops[t]*0.06);st.troops[t]-=l;dead+=l;});S.contrib+=loss*0.7*block;
+    toast(`Droid assault on ${p.name}: your garrison held, ${dead} fell.`,'warn');}
+  p.ctrl=clamp(p.ctrl-loss+others,0,100);refreshLabel(p);
+  if(p===kes&&!st)toast(`Droid assault on ${p.name}: control ${loss>others?'slipped':'held'} (${Math.round(p.ctrl)}%).`,'warn');});renderOp();if(sel)renderSheet();}
+
+/* ---------- base ---------- */
+function bCost(b){return{alloy:Math.round(150*Math.pow(1.55,b.l)),credits:Math.round(60*Math.pow(1.5,b.l))};}
+function bTime(b){return 3+b.l*2.5;}
+function openBase(){select(null);const html=()=>{
+  const B=S.b,bl=S.build;
+  const bcards=Object.entries(B).map(([k,b])=>{const busy=bl&&bl.k===k;const capped=k!=='cc'&&b.l>=B.cc.l;const c=bCost(b);
+    let act;if(busy){const rem=bl.end-now;act=`<div class="prog"><i style="width:${(1-rem/bl.dur)*100}%"></i></div><div class="ct">${gt(rem)} LEFT</div>${rem<=5?`<button class="btn pri" data-free="1">Free finish</button>`:`<button class="btn" data-help="1" ${bl.helped?'disabled':''}>${bl.helped?'Helped':'Ask alliance help'}</button>`}`;}
+    else act=`<div class="ct">${capped?'Needs a higher Command Center':costStr(c)+' · '+gt(bTime(b))}</div><button class="btn" data-up="${k}" ${bl||capped||!can(c)?'disabled':''}>Upgrade to L${b.l+1}</button>`;
+    return `<div class="card"><div class="nm">${b.n}<span>L${b.l}</span></div><div class="ds">${b.d}</div>${act}</div>`;}).join('');
+  const tcards=TYPES.map(t=>{const q=S.train[t];const bk={inf:'barracks',air:'hangar',armor:'bay',art:'works'}[t];const n=50+S.b[bk].l*25;const cost={fuel:OURS[t].fuel*n,alloy:OURS[t].alloy*n};
+    return `<div class="card"><div class="nm">${TN[t]}<span>${nf(S.troops[t])}</span></div><div class="ds">Strong vs ${TN[BEATS[t]]}.</div>${q?`<div class="prog"><i style="width:${(1-(q.end-now)/q.dur)*100}%"></i></div><div class="ct">+${q.n} · ${gt(q.end-now)}</div>`:`<div class="ct">${costStr(cost)}</div><button class="btn" data-train="${t}" data-n="${n}" ${!can(cost)?'disabled':''}>Train ${n}</button>`}</div>`;}).join('');
+  const rcards=RESEARCH.map(r=>{const done=S.done[r.k];const on=S.research&&S.research.k===r.k;
+    return `<div class="card"><div class="nm">${r.n}<span>${done?'DONE':''}</span></div><div class="ds">${r.d}</div>${on?`<div class="prog"><i style="width:${(1-(S.research.end-now)/S.research.dur)*100}%"></i></div><div class="ct">${gt(S.research.end-now)}</div>`:done?'':`<div class="ct">${costStr(r.cost)} · ${gt(r.t)}</div><button class="btn" data-res="${r.k}" ${S.research||!can(r.cost)?'disabled':''}>Research</button>`}</div>`;}).join('');
+  const heal=S.wounded.reduce((s,w)=>s+TYPES.reduce((a,t)=>a+w.troops[t],0),0);
+  return `<span class="k">HALCYON · YOUR BASE · BASE ART NOT DESIGNED YET</span><h3>Base</h3>
+   <p>One construction crew. Upgrades get longer as levels rise; anything under 5 minutes finishes free, and allies can tap to speed you up.${heal?` Field Hospital: ${nf(heal)} wounded healing.`:''}</p>
+   <span class="k">BUILDINGS</span><div class="grid4">${bcards}</div>
+   <span class="k">TRAINING</span><div class="grid4">${tcards}</div>
+   <span class="k">RESEARCH</span><div class="grid4" style="grid-template-columns:repeat(3,minmax(0,1fr))">${rcards}</div>`;};
+  const draw=()=>{const m=modalWrap.querySelector('.modal');if(!m)return;const sc=m.scrollTop;m.innerHTML=html()+'<button class="x" id="mx" aria-label="Close">✕</button>';m.scrollTop=sc;$('#mx').onclick=()=>{baseOpen=false;closeModal();};wire();};
+  const wire=()=>{const m=modalWrap.querySelector('.modal');
+    m.querySelectorAll('[data-up]').forEach(e=>e.onclick=()=>{const b=S.b[e.dataset.up];const c=bCost(b);if(!can(c))return;spend(c);const d=bTime(b);S.build={k:e.dataset.up,end:now+d,dur:d};draw();});
+    m.querySelectorAll('[data-free]').forEach(e=>e.onclick=()=>{S.build.end=now;});
+    m.querySelectorAll('[data-help]').forEach(e=>e.onclick=()=>{S.build.helped=true;draw();setTimeout(()=>{if(!S.build)return;const n=(Math.random()*6|0)+7;const cut=Math.max(n*0.01*S.build.dur,n*1/60);S.build.end-=cut;toast(`${n} allies helped: −${gt(cut)}.`);},1400);});
+    m.querySelectorAll('[data-train]').forEach(e=>e.onclick=()=>{const t=e.dataset.train,n=+e.dataset.n;const cost={fuel:OURS[t].fuel*n,alloy:OURS[t].alloy*n};if(!can(cost))return;spend(cost);S.train[t]={n,end:now+6,dur:6};draw();});
+    m.querySelectorAll('[data-res]').forEach(e=>e.onclick=()=>{const r=RESEARCH.find(x=>x.k===e.dataset.res);if(!can(r.cost))return;spend(r.cost);S.research={k:r.k,end:now+r.t,dur:r.t};draw();});};
+  baseOpen=true;modal(html(),()=>baseOpen=false);wire();baseDraw=draw;}
+let baseOpen=false,baseDraw=null;
+
+/* ---------- orders + recruit ---------- */
+function openOrders(){const draw=()=>{const done=S.orders.filter(o=>o.c).length;
+  return `<span class="k">DAILY ORDERS · RESET IN 9H 12M</span><h3>Orders</h3><p>Claim each one as it completes. Chests at 3 and 5 claimed.</p>
+  <div class="grid2">${S.orders.map((o,i)=>`<div class="card"><div class="nm">${o.t}<span>${Math.min(o.have,o.need)}/${o.need}</span></div><div class="prog"><i style="width:${o.have/o.need*100}%"></i></div><div class="ct">Reward: ${Object.entries(o.rw).map(([k,v])=>`${nf(v)} ${k==='tokens'?'recruit token':k}`).join(', ')}</div>${o.c?'<div class="ct" style="color:#7dffb0">CLAIMED</div>':`<button class="btn ${o.have>=o.need?'pri':''}" data-claim="${i}" ${o.have>=o.need?'':'disabled'}>Claim</button>`}</div>`).join('')}
+  <div class="card"><div class="nm">Order chests<span>${done}/5</span></div><div class="prog"><i style="width:${done/5*100}%"></i></div><div class="ct">3 claimed: 1,500 Alloy + speed-up · 5 claimed: recruit token + 100 Medals</div></div></div>`;};
+  modal(draw());const wire=()=>modalWrap.querySelectorAll('[data-claim]').forEach(e=>e.onclick=()=>{const o=S.orders[+e.dataset.claim];o.c=true;gain(o.rw,`Claimed: ${o.t}.`);
+    const n=S.orders.filter(x=>x.c).length;if(n===3)gain({alloy:1500},'Order chest opened: 1,500 Alloy.');if(n===5){gain({tokens:1,medals:100},'Big chest: recruit token + 100 Medals.');}
+    modalWrap.querySelector('.modal').innerHTML=draw()+'<button class="x" id="mx" aria-label="Close">✕</button>';$('#mx').onclick=closeModal;wire();renderBadge();});wire();}
+const POOL=[{n:'Cmdr. Hale',r:'Standard',ty:'inf',v:10},{n:'Cmdr. Ruiz',r:'Standard',ty:'art',v:10},{n:'Cmdr. Brask',r:'Standard',ty:'inf',v:8},{n:'Cmdr. Lin',r:'Elite',ty:'art',v:14},{n:'Cmdr. Achebe',r:'Elite',ty:'inf',v:14},{n:'Marshal Iyer',r:'Legendary',ty:'armor',v:22}];
+function openRecruit(){const draw=()=>`<span class="k">RECRUITMENT OFFICE · ODDS: STANDARD 80% · ELITE 17% · LEGENDARY 3%</span><h3>Recruit</h3>
+  <p>Every army needs a commander, and each one boosts a troop type. You get one free recruit a day, and tokens come from orders and operations.</p>
+  <div class="grid4">${S.cmds.map(c=>`<div class="card" ${c.isNew?'style="border-color:#ffc94a;box-shadow:0 0 1.5cqw #ffc94a44 inset"':''}><div class="nm">${c.n}${c.isNew?'<span>NEW</span>':''}</div><div class="ct" style="color:${c.r==='Legendary'?'#ffc94a':c.r==='Elite'?'#c9a4ff':'#c9d4e6'}">${c.r.toUpperCase()}</div><div class="ds">+${c.v}% ${TN[c.ty]}</div></div>`).join('')}</div>
+  <div class="foot"><span class="note" style="font-size:1cqw">Tokens: ${S.tokens}</span><button class="btn pri" id="pull" ${S.freeRecruit||S.tokens?'':'disabled'}>${S.freeRecruit?'Free recruit':'Use a token'}</button></div>`;
+  modal(draw());const wire=()=>{const b=$('#pull');if(b)b.onclick=()=>{if(S.freeRecruit)S.freeRecruit=false;else if(S.tokens)S.tokens--;else return;
+    const r=Math.random();const tier=r<0.03?'Legendary':r<0.2?'Elite':'Standard';const opts=POOL.filter(c=>c.r===tier&&!S.cmds.includes(c));
+    const c=opts.length?pick(opts):null;bump('recruit');renderBadge();
+    if(c){S.cmds.forEach(x=>x.isNew=false);c.isNew=true;S.cmds.push(c);toast(`Recruited ${c.n} (${c.r}).`,'gold');}else{gain({medals:30},'Duplicate recruit: converted to 30 Medals.');}
+    modalWrap.querySelector('.modal').innerHTML=draw()+'<button class="x" id="mx" aria-label="Close">✕</button>';$('#mx').onclick=closeModal;wire();renderTop();};};wire();}
+
+$('#bBase').onclick=openBase;$('#bOrders').onclick=openOrders;$('#bRecruit').onclick=openRecruit;
+
+/* ---------- camera control with tap-to-select ---------- */
+const TILT=0.86;let target=V3(15,0,4),dist=25,goal=null;
+const intro={t:0,dur:4,from:{t:V3(16,0,-8),d:88},to:{t:V3(15,0,4),d:25}};let introOn=!reduce;if(introOn){target.copy(intro.from.t);dist=intro.from.d;}
+const ptrs=new Map();let pinch0=0,dist0=0,down=null;const vel=V3(0,0,0);
+canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);vel.set(0,0,0);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});introOn=false;goal=null;
+  down=ptrs.size===1?{x:e.clientX,y:e.clientY,moved:0}:null;
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);dist0=dist;}});
+canvas.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;const p=ptrs.get(e.pointerId);const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;if(down)down.moved+=Math.abs(dx)+Math.abs(dy);
+  if(ptrs.size===1){const wpp=2*dist*Math.tan(camera.fov*Math.PI/360)/phone.clientHeight;const mx=-dx*wpp,mz=-dy*wpp/Math.sin(TILT);target.x+=mx;target.z+=mz;vel.set(mx,0,mz).multiplyScalar(60);clampT();}
+  else if(ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(pinch0>0)dist=clamp(dist0*pinch0/d,7,95);}});
+const up_=e=>{const wasTap=down&&down.moved<8&&ptrs.size===1;ptrs.delete(e.pointerId);pinch0=0;if(wasTap){vel.set(0,0,0);tapAt(e.clientX,e.clientY);}down=null;};
+canvas.addEventListener('pointerup',up_);canvas.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);down=null;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();introOn=false;goal={d:clamp((goal&&goal.d?goal.d:dist)*Math.exp(e.deltaY*0.0015),7,95)};},{passive:false});
+$('#zin').onclick=()=>{introOn=false;goal={d:Math.max(7,dist*0.7)};};$('#zout').onclick=()=>{introOn=false;goal={d:Math.min(95,dist*1.4)};};
+function clampT(){target.x=clamp(target.x,-30,58);target.z=clamp(target.z,-34,16);}
+const ease=x=>1-Math.pow(1-x,3);
+function tapAt(cx,cy){const r=phone.getBoundingClientRect();const x=cx-r.left,y=cy-r.top;let best=null,bd=1e9;
+  planets.forEach(p=>{proj.copy(p.group.position).project(camera);const px=(proj.x+1)/2*r.width,py=(-proj.y+1)/2*r.height;
+    const e=p.group.position.clone().add(V3(p.r,0,0)).project(camera);const rad=Math.abs(e.x-proj.x)*r.width/2;const d=Math.hypot(px-x,py-y);if(d<Math.max(26,rad*1.6)&&d<bd){bd=d;best=p;}});
+  select(best);}
+function resize(){const w=phone.clientWidth,h=phone.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();bg.material.uniforms.uA.value=w/h;}
+new ResizeObserver(resize).observe(phone);resize();
+
+/* ---------- labels ---------- */
+const proj=V3(0,0,0);let hudRects=[];
+function measureHud(){const pr=phone.getBoundingClientRect();hudRects=[...phone.querySelectorAll('.top,.order,.assets,.nav,.zoom,.sheet,.battle,.armies')].map(e=>{const r=e.getBoundingClientRect();return{l:r.left-pr.left,r:r.right-pr.left,t:r.top-pr.top,b:r.bottom-pr.top};});}
+function place(el,pos,dy,minPx,radius,under,force){proj.copy(pos).project(camera);const w=phone.clientWidth,h=phone.clientHeight;
+  const vis=proj.z<1&&Math.abs(proj.x)<1.15&&Math.abs(proj.y)<1.15;let px=99;
+  if(radius){const e=pos.clone().add(V3(radius,0,0)).project(camera);px=Math.abs(e.x-proj.x)*w/2;}
+  if(under){dy+=px+Math.max(3,px*0.18);el.style.setProperty('--s',Math.min(1.25,Math.max(0.85,px/16)).toFixed(3));}
+  const lx=(proj.x+1)/2*w,ly=(-proj.y+1)/2*h+dy;const hid=hudRects.some(r=>lx>r.l-40&&lx<r.r+40&&ly>r.t-12&&ly<r.b+30);
+  el.style.opacity=(vis&&(px>=minPx||force)&&!hid)?'1':'0';el.style.left=lx+'px';el.style.top=ly+'px';return px;}
+
+/* ---------- main loop ---------- */
+const allyAmb=ships.slice(0,11),foeAmb=ships.slice(11,17);
+const clock=new THREE.Clock();let t=0,uiTick=0,fcount=0;
+function frame(){
+  const dt=Math.min(clock.getDelta(),0.05);t+=reduce?0:dt;const gdt=dt*(window.__speed||1);now+=gdt;fcount++;
+  if(introOn){intro.t+=dt;const k=ease(Math.min(intro.t/intro.dur,1));target.lerpVectors(intro.from.t,intro.to.t,k);dist=THREE.MathUtils.lerp(intro.from.d,intro.to.d,k);if(k>=1)introOn=false;}
+  if(goal){if(goal.d!=null)dist+=(goal.d-dist)*Math.min(1,dt*5);if(goal.t){target.lerp(goal.t,Math.min(1,dt*4));}
+    if((goal.d==null||Math.abs(goal.d-dist)<0.05)&&(!goal.t||target.distanceTo(goal.t)<0.05))goal=null;}
+  if(!ptrs.size&&vel.lengthSq()>1e-6){target.addScaledVector(vel,dt);vel.multiplyScalar(Math.exp(-dt*4));clampT();}
+  camera.position.set(target.x,Math.sin(TILT)*dist,target.z+Math.cos(TILT)*dist);camera.lookAt(target);
+  bg.material.uniforms.uT.value=t;bg.material.uniforms.uOff.value.set(target.x*0.006,-target.z*0.006);
+  starMats.forEach(m=>m.uniforms.uT.value=t);zones.forEach(m=>m.uniforms.uT.value=t);
+  planets.forEach((p,i)=>{p.mat.uniforms.uT.value=t;p.mat.uniforms.uSpin.value=t*0.05*(1+(i%5)*0.13);});
+  station.position.set(Math.cos(t*0.5)*1.05,0.18,Math.sin(t*0.5)*1.05);station.rotation.y=t*0.8;
+  ships.forEach(s=>{const a=s.ph+t*s.sp;tmp.set(Math.cos(a)*s.rad,0,Math.sin(a)*s.rad).applyAxisAngle(xa,s.inc).applyAxisAngle(up,s.node).add(s.planet.group.position);
+    s.prev.copy(s.g.position);s.g.position.copy(tmp);if(s.prev.lengthSq()>0&&s.prev.distanceToSquared(tmp)>1e-8)s.g.lookAt(tmp.clone().multiplyScalar(2).sub(s.prev));
+    (s.g.userData.glows||[]).forEach(gl=>gl.material.opacity=0.8+Math.sin(t*20+s.ph)*0.2);});
+  // marches
+  for(const a of [...S.armies]){const u=Math.min(1,(now-a.t0)/a.dur),uu=THREE.MathUtils.smoothstep(u,0,1);arc(a.from,a.to,uu,a.g.position);arc(a.from,a.to,Math.min(uu+0.01,1),tmp);
+    if(tmp.distanceToSquared(a.g.position)>1e-6)a.g.lookAt(tmp);a.trail.forEach((s,i)=>{arc(a.from,a.to,Math.max(0,uu-i*0.01),s.position);s.material.opacity=0.35*(1-i/a.trail.length);s.scale.setScalar(0.5*(1-i/a.trail.length)+0.1);});
+    a.el.innerHTML=a.dir==='back'?`RETURNING <b>→ HALCYON</b> · ${gt(a.dur-(now-a.t0))}`:`YOUR ARMY <b>→ ${a.to.name}</b> · ${gt(a.dur-(now-a.t0))}`;
+    if(u>=1)endMarch(a);}
+  // battles
+  for(const b of [...S.battles])if(now>=b.next){b.next=now+1.9;round(b);}
+  // ambient + battle fire
+  if(!reduce){
+    if(t>nextShot){nextShot=t+0.08+Math.random()*0.12;const s=pick(allyAmb);fire(s.g.position,surfacePoint(kes),0x8ff0ff,8);}
+    if(t>nextFoe){nextFoe=t+0.18+Math.random()*0.2;const f=pick(foeAmb),tg=pick(allyAmb);fire(f.g.position,tg.g.position,0xff5a6a,6);}
+    if(t>nextFlak){nextFlak=t+0.1;const v=V3(Math.random()-0.5,Math.random()-0.2,Math.random()-0.5).normalize().multiplyScalar(kes.r*(1.3+Math.random()*1.3)).add(kes.group.position);puff(v,Math.random()<0.5?0xffb070:0xffffff,0.14,0.3,false);}
+    S.battles.forEach(b=>{if(Math.random()<dt*9){const s=pick(b.orbit);fire(s.g.position,surfacePoint(b.p),0x8ff0ff,8);}});
+  }
+  for(let i=bolts.length-1;i>=0;i--){const b=bolts[i];b.t+=dt;const k=b.t/b.dur;
+    if(k>=1){scene.remove(b.b);b.b.material.dispose();bolts.splice(i,1);
+      if(b.color===0x8ff0ff){puff(b.to,0xffd27a,0.45+Math.random()*0.35,0.45);puff(b.to,0xff7a2a,0.22,2.6);}else if(b.color===0xffe08a){puff(b.to,0xffffff,0.9,0.5);puff(b.to,0xffa040,0.5,3);}else puff(b.to,0xffa07a,0.28,0.25);continue;}
+    b.b.position.lerpVectors(b.from,b.to,k);}
+  for(let i=fx.length-1;i>=0;i--){const f=fx[i];f.t+=dt;const k=f.t/f.life;f.s.material.opacity=Math.max(1-k,0)*(f.life>2?0.8:1);f.s.scale.setScalar(f.size*(f.life>2?1:(0.6+k*0.8)));
+    if(f.t>=f.life){scene.remove(f.s);f.s.material.dispose();fx.splice(i,1);}}
+  for(let i=halos.length-1;i>=0;i--){const h=halos[i];h.t+=dt;const k=h.t/h.life;h.s.material.opacity=0.7*(1-k)*(0.75+0.25*Math.sin(h.t*12));h.s.scale.setScalar(h.base*(1+0.15*Math.sin(h.t*4)));if(k>=1){scene.remove(h.s);halos.splice(i,1);}}
+  for(let i=shocks.length-1;i>=0;i--){const s=shocks[i];s.t+=dt;const k=s.t/1.1;s.r.scale.setScalar(s.R*(1.2+k*4));s.r.material.opacity=1-k;if(k>=1){scene.remove(s.r);shocks.splice(i,1);}}
+  renderer.render(scene,camera);
+  // timers
+  prodTick(gdt);
+  if(S.build&&now>=S.build.end){const b=S.b[S.build.k];b.l++;S.build=null;bump('upg');toast(`${b.n} upgraded to L${b.l}.`,'gold');renderAssets();if(b===S.b.cc&&b.l===5)toast('Third army slot unlocked.','gold');renderArmies();}
+  TYPES.forEach(tp=>{const q=S.train[tp];if(q&&now>=q.end){S.troops[tp]+=q.n;delete S.train[tp];bump('train',q.n);toast(`${q.n} ${TN[tp]} trained.`);}});
+  if(S.research&&now>=S.research.end){const r=RESEARCH.find(x=>x.k===S.research.k);S.done[r.k]=1;S.research=null;toast(`Research complete: ${r.n}.`,'gold');}
+  for(let i=S.wounded.length-1;i>=0;i--)if(now>=S.wounded[i].at){const w=S.wounded[i];TYPES.forEach(tp=>S.troops[tp]+=w.troops[tp]);S.wounded.splice(i,1);toast(`Field Hospital: ${nf(TYPES.reduce((s,tp)=>s+w.troops[tp],0))} troops healed.`);}
+  if(now>nextAssault){nextAssault=now+30;assaults();}
+  uiTick+=dt;if(uiTick>0.25){uiTick=0;renderTop();renderAssets();renderArmies();if(baseOpen&&baseDraw)baseDraw();}
+  if(fcount%20===1)measureHud();
+  // labels
+  systems.forEach(s=>place(s.el,s.pos,0,0,s.sr,true));
+  planets.forEach(p=>place(p.el,p.group.position,0,p.war||p.home||p.side==='war'?2:7,p.r,true,sel===p));
+  S.armies.forEach(a=>place(a.el,a.g.position,-8,0));
+  tagQ.forEach(q=>place(q.d,q.pos,-20,0,0,false,true));
+  requestAnimationFrame(frame);
+}
+
+/* ---------- boot ---------- */
+renderTop();renderAssets();renderOp();renderArmies();renderBadge();renderTarget();
+requestAnimationFrame(frame);
+document.querySelector('.poster').style.opacity='0';
+modal(`<span class="k">WELCOME BACK, COMMANDER · YOU WERE AWAY 8H 20M</span><h3>While you were away</h3>
+  <p>Your base kept producing and the war kept moving. Nothing was lost by being away.</p>
+  <div class="stats"><div class="stat"><span class="l">PRODUCED</span><span class="v">+9.6K</span><span class="l">ALLOY, FUEL, CREDITS</span></div>
+  <div class="stat"><span class="l">KESTREL IV</span><span class="v">62%</span><span class="l">WAS 58%: THE FRONT HELD</span></div>
+  <div class="stat"><span class="l">DROID ASSAULTS</span><span class="v">31</span><span class="l">ACROSS THE SECTOR</span></div>
+  <div class="stat"><span class="l">ORDERS</span><span class="v">5 NEW</span><span class="l">+ A FREE RECRUIT</span></div></div>
+  <div class="quote">INTERCEPTED · Overseer: The humans are asleep. Attack! Overseer: They were not asleep.</div>
+  <div class="foot"><span class="note" style="font-size:1cqw">Start: tap Kestrel IV (the gold planet), then Attack.</span><button class="btn pri" id="ok">To the war</button></div>`);
+$('#ok').onclick=closeModal;
+window.__S=S;window.__api={select,planets,openSend,fireWeapon,WEAPONS,openBase,openOrders,openRecruit,kes};
+</script>
+
+</body>
+</html>
