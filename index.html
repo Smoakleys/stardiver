@@ -17,7 +17,7 @@
 </head>
 <body>
 
-<div class="sd-build">build 2026-11-02 19:28 UTC</div>
+<div class="sd-build">build 2026-11-02 19:48 UTC</div>
 <meta name="sd-orient" content="any">
 <script>if(matchMedia("(pointer:coarse)").matches||navigator.maxTouchPoints>0)document.documentElement.classList.add("sd-touch")</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -199,6 +199,19 @@ html.sd-touch .dev{display:none}
 .ios svg{width:16px;height:16px;vertical-align:-3px}
 .boot{position:absolute;inset:0;display:grid;place-items:center;background:#05070d;z-index:50;font:600 13px var(--display);letter-spacing:.3em;color:#8f9bb3;transition:opacity .6s}
 
+/* ---------- opening tutorial ---------- */
+#tut{position:absolute;inset:0;z-index:33;pointer-events:none;display:none}
+#tut .tb{position:absolute;background:#02040acc;pointer-events:auto;touch-action:none}
+#tut .tring{pointer-events:none}
+#tut .tbub{position:absolute;left:calc(10px + var(--sal));right:calc(10px + var(--sar));top:calc(98px + var(--sat));display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:start;background:#0c1322f6;border:1px solid #4fe3ff77;padding:10px 12px;pointer-events:auto;font:500 14px/1.4 var(--body);box-shadow:0 10px 30px #000a}
+#tut .tbub.low{top:auto;bottom:calc(var(--botH,124px) + 10px)}
+#tut .tbub .face{width:44px;height:44px;background:#13213a;border:1px solid #4fe3ff77;display:grid;place-items:center}
+#tut .tbub .face svg{width:32px;height:32px}
+#tut .tbub .who{font:500 9.5px/1 var(--mono);letter-spacing:.16em;color:var(--ally);margin-bottom:4px}
+#tut .tbub b{color:#fff1c9}
+#tut .tw{font:500 12px var(--mono);color:#7dffb0}
+#tut .tskip{all:unset;cursor:pointer;grid-column:2;justify-self:end;font:500 11px var(--mono);color:#8f9bb3;padding:6px 0 0}
+#app.L #tut .tbub{left:auto;width:360px}
 /* ---------- landscape: same game, wider layout ---------- */
 #app.L .top{grid-template-columns:auto 1fr;align-items:center;top:calc(6px + var(--sat))}
 #app.L .r1 .icb{display:none}
@@ -785,18 +798,18 @@ const BDEF={
   cc:{n:'Command Center',d:'The heart of Halcyon Base. Every other building is capped at its level.',cost:{alloy:260,credits:140},tm:1.5},
   refinery:{n:'Alloy Refinery',d:'Produces Alloy, used for buildings and troops.',cost:{alloy:110,credits:50},prod:'alloy',rate:.9},
   extractor:{n:'Fuel Extractor',d:'Produces Fuel. Troops and marches burn it.',cost:{alloy:120,credits:40},prod:'fuel',rate:.75},
-  hub:{n:'Trade Hub',d:'Produces Credits, used for research and upgrades.',cost:{alloy:140,fuel:60},prod:'credits',rate:.5},
+  hub:{n:'Trade Hub',d:'Produces Credits, used for research and upgrades.',cost:{alloy:140,fuel:60},needCC:2,prod:'credits',rate:.5},
   barracks:{n:'Barracks',d:'Trains Infantry. Higher levels train bigger batches, faster.',cost:{alloy:130,fuel:80},trains:'inf'},
-  hangar:{n:'Hangar',d:'Trains Air units. Air beats Armor.',cost:{alloy:160,fuel:90},trains:'air'},
-  lab:{n:'Research Lab',d:'Runs research that makes everything stronger.',cost:{alloy:150,credits:90}},
-  hospital:{n:'Field Hospital',d:'Wounded troops come here instead of dying. Heal them to get them back.',cost:{alloy:120,fuel:60}},
-  uplink:{n:'Orbital Uplink',d:'Controls your Orbital Platform: the gun in orbit that supports your battles.',cost:{alloy:300,credits:160},needCC:3,tm:.8},
-  comms:{n:'Listening Post',d:'Listens in on droid communications. Some of it is useful. Some of it is just droids.',cost:{alloy:150,credits:80}},
+  hangar:{n:'Hangar',d:'Trains Air units. Air beats Armor.',cost:{alloy:160,fuel:90},needCC:3,trains:'air'},
+  lab:{n:'Research Lab',d:'Runs research that makes everything stronger.',cost:{alloy:150,credits:90},needCC:2},
+  hospital:{n:'Field Hospital',d:'Wounded troops come here instead of dying. Heal them to get them back.',cost:{alloy:120,fuel:60},needCC:2},
+  uplink:{n:'Orbital Uplink',d:'Controls your Orbital Platform: the gun in orbit that supports your battles.',cost:{alloy:300,credits:160},needCC:3,tm:.8,t1:20},
+  comms:{n:'Listening Post',d:'Listens in on droid communications. Some of it is useful. Some of it is just droids.',cost:{alloy:150,credits:80},needCC:3},
   bay:{n:'Vehicle Bay',d:'Trains Armor. Armor beats Artillery.',cost:{alloy:400,fuel:200},needCC:4,trains:'armor'},
   works:{n:'Artillery Works',d:'Trains Artillery. Artillery beats Infantry.',cost:{alloy:400,fuel:240},needCC:4,trains:'art'},
 };
 const costOf=(k,l)=>{const c={};Object.entries(BDEF[k].cost).forEach(([r,v])=>c[r]=Math.round(v*Math.pow(1.85,Math.max(0,l-2))/10)*10);return c;};
-const timeOf=(k,l)=>Math.round((TT[l]||TT[TT.length-1]*2)*(BDEF[k].tm||1)*(l===1?0:1)+(l===1?15:0));
+const timeOf=(k,l)=>l===1?(BDEF[k].t1||8):Math.round((TT[l]||TT[TT.length-1]*2)*(BDEF[k].tm||1));
 const rateOf=(k,l)=>BDEF[k].rate*Math.pow(l,1.3);
 const capOf=(k,l)=>800*l;
 const RESEARCH=[
@@ -818,14 +831,14 @@ const CHATTER=['Relay 9 to Command: requesting clarification on "hold the line."
  'Squad 8: Concord artillery has stopped. Recommend we celebrate. ...Correction. It has started.'];
 
 /* ---------- state ---------- */
-const SAVE='stardiver-v2';
-function fresh(){return{v:2,G:0,savedAt:Date.now(),res:{alloy:600,fuel:500,credits:400,medals:0},
-  b:{cc:2,refinery:1,extractor:1,hub:1,barracks:1,hangar:1,lab:1,hospital:1,uplink:0,comms:1,bay:0,works:0},comms:{next:0,log:[],n:0},
-  store:{refinery:150,extractor:60,hub:30},build:null,train:{},research:null,done:{},
-  troops:{inf:240,air:60,armor:0,art:0},wounded:{inf:0,air:0,armor:0,art:0},heal:null,items:{'1m':2,'5m':1},
+const SAVE='stardiver-v3';
+function fresh(){return{v:3,G:0,savedAt:Date.now(),tut:0,res:{alloy:1200,fuel:900,credits:700,medals:0},
+  b:{cc:1,refinery:0,extractor:0,hub:0,barracks:0,hangar:0,lab:0,hospital:0,uplink:0,comms:0,bay:0,works:0},comms:{next:0,log:[],n:0},
+  store:{},build:null,train:{},research:null,done:{},
+  troops:{inf:0,air:0,armor:0,art:0},wounded:{inf:0,air:0,armor:0,art:0},heal:null,items:{'1m':2,'5m':1},
   ctrl:{'KESTREL II':40,'KESTREL IV':62},plat:null,mi:0,claimed:false,st:{},daily:{day:-1,base:{},got:{}},seenIntro:false,iosHint:false,cd:{}};}
 let S;try{S=JSON.parse(localStorage.getItem(SAVE)||'null');}catch(e){S=null;}
-if(!S||S.v!==2)S=fresh();
+if(!S||S.v!==3)S=fresh();
 let offline=0;
 {const away=Math.max(0,(Date.now()-(S.savedAt||Date.now()))/1000);offline=away;S.G+=away;}
 const st=k=>S.st[k]||0;
@@ -857,7 +870,9 @@ function startUpgrade(k){const c=canUpgrade(k);if(!c.ok){toast(c.why,'warn');ret
   S.build={k,to:n,start:S.G,end:S.G+timeOf(k,n)};stat('ups');refreshPlot(k);renderChips();return true;}
 function finishBuild(){const bd=S.build;if(!bd)return;S.b[bd.k]=bd.to;S.build=null;refreshPlot(bd.k,true);
   toast(`${BDEF[bd.k].n} is now Lv ${bd.to}.`,'gold');
-  if(bd.k==='uplink'&&bd.to===1)launchPlatform();renderTop();renderChips();afterStat();if(sheetFor===bd.k)openPlot(bd.k);}
+  if(bd.k==='uplink'&&bd.to===1)launchPlatform();
+  if(bd.k==='cc'&&CC_GIFT[bd.to]){const g=CC_GIFT[bd.to];setTimeout(()=>{const txt=give(g,{x:app.clientWidth/2,y:app.clientHeight/2});toast(`Command Center Lv ${bd.to} gift: ${txt}.`,'gold');},700);}renderTop();renderChips();afterStat();if(sheetFor===bd.k)openPlot(bd.k);}
+const CC_GIFT={2:{alloy:400,credits:200},3:{alloy:800,fuel:500,'sp:5m':1},4:{alloy:1500,fuel:1000,credits:600,'sp:15m':1},5:{alloy:3000,fuel:2000,'sp:1h':1}};
 function freeFinish(){if(S.build&&S.build.end-S.G<=FREE){S.build.end=S.G;stat('free');finishBuild();}}
 function useSpeed(kind,code){const job=kind==='build'?S.build:kind==='research'?S.research:S.train[kind];if(!job||!S.items[code])return;
   S.items[code]--;job.end-=SPS[code];toast(`Used a ${code} speed-up.`);stat('speedups');
@@ -1027,21 +1042,24 @@ function fireAim(){if(!aim||!aim.dir)return;const {w,b,dir}=aim;const p=b.planet
 
 /* ---------- missions (a guided chain) and daily orders ---------- */
 const MISSIONS=[
- {t:'Upgrade the Alloy Refinery',h:'Your buildings produce resources on their own. Higher levels produce more.',done:()=>S.b.refinery>=2||(S.build&&S.build.k==='refinery'),rw:{alloy:200},go:()=>goPlot('refinery')},
- {t:'Finish it with the Free speed-up',h:'Any build under 5:00 finishes free. Tap FREE on the builder.',done:()=>st('free')>=1,rw:{fuel:200},go:()=>{setTab('base');coachEl('#chips .free')||goPlot('refinery');}},
- {t:'Train 100 Infantry at the Barracks',h:'Troops are your Power and your army.',done:()=>st('trained')>=100,rw:{alloy:300},go:()=>goPlot('barracks')},
- {t:'Upgrade the Command Center to Lv 3',h:'The Command Center caps every other building.',done:()=>S.b.cc>=3,rw:{credits:300},go:()=>goPlot('cc')},
+ {t:'Build the Research Lab',h:'Research makes everything you own stronger, forever.',done:()=>S.b.lab>=1,rw:{credits:200},go:()=>goPlot('lab')},
+ {t:'Research Hardened Rounds',h:'+10% attack for every troop.',done:()=>st('research')>=1,rw:{alloy:300},go:()=>goPlot('lab')},
+ {t:'Upgrade the Alloy Refinery to Lv 2',h:'More Alloy every minute, collected automatically.',done:()=>S.b.refinery>=2,rw:{credits:200},go:()=>goPlot('refinery')},
+ {t:'Build the Field Hospital',h:'Wounded troops recover here instead of dying.',done:()=>S.b.hospital>=1,rw:{fuel:300},go:()=>goPlot('hospital')},
+ {t:'Upgrade the Command Center to Lv 3',h:'Unlocks the Orbital Uplink, Hangar and Listening Post.',done:()=>S.b.cc>=3,rw:{'sp:1m':2,alloy:400},go:()=>goPlot('cc')},
  {t:'Build the Orbital Uplink',h:'It puts a gun in orbit that supports your battles.',done:()=>S.b.uplink>=1,rw:{medals:50},go:()=>goPlot('uplink')},
+ {t:'Train 150 Infantry',h:'Kestrel II needs a real army.',done:()=>st('trained')>=200,rw:{fuel:300},go:()=>goPlot('barracks')},
  {t:'Open the Star Map',h:'The war is out there.',done:()=>st('map')>=1,rw:{fuel:150},go:()=>coachEl('#nav [data-tab=map]')},
  {t:'Move your Orbital Platform to Kestrel II',h:'Park it over the planet before your army lands.',done:()=>st('platKes2')>=1,rw:{alloy:200},go:()=>goPlanet(kes2,'#sMove')},
  {t:'Send an army to attack Kestrel II',h:'Survivors come home. Wounded go to the Field Hospital.',done:()=>st('attacks')>=1,rw:{fuel:300},go:()=>goPlanet(kes2,'#sAtk')},
  {t:'Fire a Barrage at a droid column',h:'Aim at the red ground fire. Columns near your landing zone hurt most.',done:()=>st('barrageHits')>=1,rw:{credits:300},go:()=>goWeap('barrage')},
  {t:'Drop a Shield over your landing zone',h:'It cuts the damage your troops take while it lasts.',done:()=>st('shields')>=1,rw:{alloy:300},go:()=>goWeap('shield')},
  {t:'Win the battle for Kestrel II',h:'A win pushes the planet toward Concord control.',done:()=>st('wins')>=1,rw:{medals:100,'sp:5m':1},go:()=>{const b=battles[0];if(b){setTab('map');focusPlanet(b.planet);}else goPlanet(kes2,'#sAtk');}},
- {t:'Defeat a Droid Patrol',h:'Patrols roam the map. Each one drops a speed-up and resources.',done:()=>st('patrolWins')>=1,rw:{'sp:10m':1,alloy:300},go:()=>goPatrol()},
- {t:'Read an intercept at the Listening Post',h:'It listens in on droid comms. Some reveal bonus targets.',done:()=>st('readComms')>=1,rw:{credits:200},go:()=>goPlot('comms')},
+ {t:'Build the Listening Post',h:'It listens in on droid comms. Some of it is useful.',done:()=>S.b.comms>=1,rw:{credits:300},go:()=>goPlot('comms')},
+ {t:'Read an intercept at the Listening Post',h:'Some intercepts reveal bonus targets.',done:()=>st('readComms')>=1,rw:{credits:200},go:()=>goPlot('comms')},
+ {t:'Defeat a Droid Patrol',h:'Patrols roam the map. Each one drops a speed-up and resources.',done:()=>st('patrolWins')>=1,rw:{'sp:1m':1,alloy:300},go:()=>goPatrol()},
  {t:'Destroy an intercepted target',h:'Intercepted targets carry big loot, and they don\'t wait around.',done:()=>st('poiWins')>=1,rw:{alloy:600,'sp:1m':1},go:()=>goPoi()},
- {t:'Start researching Hardened Rounds',h:'Research makes every troop stronger, forever.',done:()=>st('research')>=1,rw:{credits:400},go:()=>goPlot('lab')},
+ {t:'Build the Hangar',h:'Air beats Armor. Every army needs a mix.',done:()=>S.b.hangar>=1,rw:{fuel:400},go:()=>goPlot('hangar')},
  {t:'Claim a Daily Order',h:'Daily Orders reset every day for everyone.',done:()=>st('dailyClaims')>=1,rw:{'sp:15m':1},go:()=>openMissions('daily')},
  {t:'Upgrade the Command Center to Lv 4',h:'Unlocks the Vehicle Bay and Artillery Works.',done:()=>S.b.cc>=4,rw:{'sp:30m':1,alloy:800},go:()=>goPlot('cc')},
  {t:'Build the Vehicle Bay',h:'Armor beats Artillery. A full army needs every type.',done:()=>S.b.bay>=1,rw:{'sp:1h':1,fuel:800},go:()=>goPlot('bay')},
@@ -1057,6 +1075,56 @@ const curM=()=>MISSIONS[S.mi];
 function claimMission(from){const m=curM();if(!m||!m.done())return;const txt=give(m.rw,from);toast(`Mission complete: ${txt}.`,'gold');S.mi++;coachOff();renderMission();
   const n=curM();if(n&&!reduce)setTimeout(()=>{if(curM()===n&&!n.done())pulseMission();},400);}
 function afterStat(){renderMission();renderBadge();}
+
+/* =====================================================================
+   OPENING TUTORIAL (forced, Evony-style): you build the first buildings yourself.
+   Everything else on screen is blocked; a hand points at the one thing to tap.
+   Logic only knows building keys, never positions or art.
+   ===================================================================== */
+const TUT=[
+ {k:'refinery',say:'Everything here is built from Alloy. Tap the empty plot and build an <b>Alloy Refinery</b>.',done:()=>S.b.refinery>=1,rw:{credits:100}},
+ {k:'extractor',say:'Troops and engines burn Fuel. Build a <b>Fuel Extractor</b>.',done:()=>S.b.extractor>=1,rw:{alloy:150}},
+ {k:'barracks',say:'Now somewhere to train soldiers. Build the <b>Barracks</b>.',done:()=>S.b.barracks>=1,rw:{fuel:150}},
+ {k:'barracks',train:true,say:'Train your first <b>50 Infantry</b>. Troops are your army and your Power.',done:()=>st('trained')>=50,rw:{alloy:200}},
+ {k:'cc',say:'The Command Center caps every other building. Upgrade it to <b>Lv 2</b>.',done:()=>S.b.cc>=2,rw:{credits:150}},
+ {k:'hub',say:'Credits pay for research and upgrades. Build the <b>Trade Hub</b>.',done:()=>S.b.hub>=1,rw:{alloy:200}},
+];
+const tutOn=()=>S.tut<TUT.length&&S.seenIntro;
+const tutEl=document.createElement('div');tutEl.id='tut';
+tutEl.innerHTML='<div class="tb"></div><div class="tb"></div><div class="tb"></div><div class="tb"></div><div class="hand tring"></div><div class="tbub"><div class="face"></div><div><div class="who"></div><div class="say"></div></div><button class="tskip">Skip tutorial</button></div>';
+app.appendChild(tutEl);
+const TB=[...tutEl.querySelectorAll('.tb')],tRing=tutEl.querySelector('.tring'),tBub=tutEl.querySelector('.tbub');
+TB.forEach(b=>{['pointerdown','pointerup','click','wheel'].forEach(ev=>b.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation();},{passive:false}));});
+tutEl.querySelector('.tskip').onclick=()=>{if(!tutEl.querySelector('.tskip').dataset.ok){tutEl.querySelector('.tskip').dataset.ok=1;tutEl.querySelector('.tskip').textContent='Tap again to skip';return;}
+  ['refinery','extractor','barracks','hub'].forEach(k=>S.b[k]=Math.max(1,S.b[k]));S.b.cc=Math.max(2,S.b.cc);if(st('trained')<50){S.troops.inf+=50;S.st.trained=50;}S.build=null;S.train={};
+  Object.keys(PLOTS).forEach(k=>refreshPlot(k));S.tut=TUT.length;closeSheet();tutEnd();};
+function tutStart(){tutEl.querySelector('.face').innerHTML=FACE;tutEl.style.display='block';const s=TUT[S.tut];if(s){const p=plots[s.k];bc.goal=V3(p.x,0,p.z+.4);}}
+function tutTarget(){const s=TUT[S.tut];if(!s)return null;const k=s.k;
+  if(s.train){if(S.train[k])return{wait:`Training ${S.train[k].n} Infantry · ${fmt(S.train[k].end-S.G)}`};return sheetFor===k?{el:'#tGo'}:{plot:k};}
+  if(S.build&&S.build.k===k)return sheetFor===k?{el:'#uFree'}:{el:'#chips .free'};
+  if(sheetFor===k)return{el:'#uGo'};
+  return{plot:k};}
+function tutBlocks(){return false;}// the blockers catch stray taps themselves
+let tutPrev=-1;
+function tutTick(){if(!tutOn()||hud.modal.innerHTML){tutEl.style.display='none';hud.mis.style.display=tutOn()?'none':'';return;}
+  tutEl.style.display='block';hud.mis.style.display='none';
+  const s=TUT[S.tut];
+  if(s.done()){const txt=give(s.rw,{x:app.clientWidth/2,y:app.clientHeight*.4});ftext('STEP COMPLETE',{x:app.clientWidth/2,y:app.clientHeight*.38},'#7dffb0');closeSheet();S.tut++;save();
+    if(S.tut>=TUT.length){tutEl.style.display='none';setTimeout(tutEnd,900);return;}const p=plots[TUT[S.tut].k];bc.goal=V3(p.x,0,p.z+.4);return;}
+  if(tutPrev!==S.tut){tutPrev=S.tut;tutEl.querySelector('.who').textContent=`LT. SENA ITO · STEP ${S.tut+1} OF ${TUT.length}`;}
+  const t=tutTarget();const W=app.clientWidth,H=app.clientHeight,a=app.getBoundingClientRect();let r=null;
+  if(t.plot){const p=plots[t.plot];const c=screenOf(V3(p.x,Math.min(p.h,1.6)*.45,p.z),bcam);const sz=Math.max(96,Math.min(150,W*.3));r={x0:c.x-sz/2,y0:c.y-sz/2,x1:c.x+sz/2,y1:c.y+sz/2};}
+  else if(t.el){const el=document.querySelector(t.el);if(el){const b=el.getBoundingClientRect();r={x0:b.left-a.left-6,y0:b.top-a.top-6,x1:b.right-a.left+6,y1:b.bottom-a.top+6};}}
+  tutEl.querySelector('.say').innerHTML=t.wait?`${s.say}<br><span class="tw">${t.wait}</span>`:s.say;
+  if(!r){TB.forEach(b=>b.style.display='none');tRing.style.display='none';}
+  else{const R=[[0,0,W,r.y0],[0,r.y1,W,H-r.y1],[0,r.y0,r.x0,r.y1-r.y0],[r.x1,r.y0,W-r.x1,r.y1-r.y0]];
+    TB.forEach((b,i)=>{const [x,y,w,h]=R[i];b.style.display='';b.style.left=x+'px';b.style.top=y+'px';b.style.width=Math.max(0,w)+'px';b.style.height=Math.max(0,h)+'px';});
+    tRing.style.display='';tRing.style.transform=`translate(${(r.x0+r.x1)/2}px,${(r.y0+r.y1)/2}px)`;}
+  const cy=r?(r.y0+r.y1)/2:H;tBub.classList.toggle('low',cy<H*.5);}
+function tutEnd(){hud.mis.style.display='';
+  advisor('Halcyon Base is running','Good work, Commander. Reinforcements just landed: <b style="color:#fff">250 Infantry and 60 Air</b>. From here your missions at the bottom of the screen show what to do next, in whatever order you like. Kestrel is waiting.','Take command',()=>{
+    S.troops.inf+=250;S.troops.air+=60;give({alloy:500,fuel:400,'sp:1m':2},{x:app.clientWidth/2,y:app.clientHeight/2});toast('Reinforcements: 250 Infantry, 60 Air. Plus 500 Alloy, 400 Fuel, 2× 1m speed-ups.','gold');
+    renderTop();renderMission();save();setTimeout(pulseMission,500);setTimeout(iosHint,30000);});}
 
 /* =====================================================================
    BASE PLOTS: models, scaffolds, labels
@@ -1153,7 +1221,7 @@ function openPlot(k){const l=S.b[k],d=BDEF[k],n=l+1;let h=hd(l?'BUILDING':'EMPTY
   if(d.prod&&l)h+=`<div class="sec"><div class="h">Production · collects automatically</div><div class="kv"><span>${d.prod[0].toUpperCase()+d.prod.slice(1)} per minute</span><b>${nf(rateOf(k,l)*60)} <span class="up">→ ${nf(rateOf(k,n)*60)} at Lv ${n}</span></b></div></div>`;
   if(d.trains&&l){const t=d.trains;const q=S.train[k];h+=`<div class="sec"><div class="h">Train ${TN[t]} · you have ${nf(S.troops[t])}</div>`;
     if(q)h+=`<div class="kv"><span>Training ${q.n} ${TN[q.t]}</span><b>${fmt(q.end-S.G)}</b></div><button class="btn" id="tSpd">Speed up</button>`;
-    else{const mx=trainMax(k),def=Math.min(mx,100);h+=`<div class="slider"><span>Amount</span><input type="range" id="tN" min="10" max="${mx}" step="10" value="${def}"><output id="tO">${def}</output></div><div id="tC"></div><button class="btn pri" id="tGo">Train</button>`;}
+    else{const mx=trainMax(k),def=Math.min(mx,S.tut<TUT.length?50:100);h+=`<div class="slider"><span>Amount</span><input type="range" id="tN" min="10" max="${mx}" step="10" value="${def}"><output id="tO">${def}</output></div><div id="tC"></div><button class="btn pri" id="tGo">Train</button>`;}
     h+=`</div>`;}
   if(k==='lab'&&l){h+=`<div class="sec"><div class="h">Research</div>`+RESEARCH.map(r=>{const doing=S.research&&S.research.k===r.k;const left=doing?S.research.end-S.G:0;
       return `<div class="rs"><div><b>${r.n}</b><small>${r.d} · ${fmt(r.t)}</small>${S.done[r.k]||doing?'':costHTML(r.cost)}</div>${S.done[r.k]?'<span class="note">Done</span>':doing?(left<=FREE?`<button class="btn grn" data-free="1">Free</button>`:`<button class="btn" data-spd="1">${fmt(left)}</button>`):`<button class="btn pri" data-r="${r.k}" ${S.research?'disabled':''}>Research</button>`}</div>`;}).join('')+`</div>`;}
@@ -1282,7 +1350,7 @@ canvas.addEventListener('pointermove',e=>{const p=ptrs.get(e.pointerId);if(!p)re
   if(ptrs.size===1){if(tab==='base'){const wpp=2*baseDist()*Math.tan(bcam.fov*Math.PI/360)/H;const mx=-dx*wpp,mz=-dy*wpp/Math.sin(bc.pitch);bc.t.x+=mx;bc.t.z+=mz;bc.vel.set(mx,0,mz).multiplyScalar(50);}
     else{const d=mc.dist*(mcam.aspect<1?1.55:1);const wpp=2*d*Math.tan(mcam.fov*Math.PI/360)/H;const mx=-dx*wpp,mz=-dy*wpp/Math.sin(TILT);mc.t.x+=mx;mc.t.z+=mz;mc.vel.set(mx,0,mz).multiplyScalar(50);}}
   else if(ptrs.size===2&&pinch0>0){const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(tab==='base')bc.zoom=clamp(zoom0*pinch0/d,.55,1.6);else mc.dist=clamp(zoom0*pinch0/d,3,70);}});
-const upP=e=>{const tap=down&&down.moved<9&&ptrs.size===1;ptrs.delete(e.pointerId);pinch0=0;if(tap){bc.vel.set(0,0,0);mc.vel.set(0,0,0);tapAt(e.clientX,e.clientY);}if(!ptrs.size)down=null;};
+const upP=e=>{const tap=down&&down.moved<9&&ptrs.size===1;ptrs.delete(e.pointerId);pinch0=0;if(tap){if(tutBlocks(e.clientX,e.clientY)){if(!ptrs.size)down=null;return;}bc.vel.set(0,0,0);mc.vel.set(0,0,0);tapAt(e.clientX,e.clientY);}if(!ptrs.size)down=null;};
 canvas.addEventListener('pointerup',upP);canvas.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);down=null;});
 canvas.addEventListener('wheel',e=>{e.preventDefault();if(tab==='base')bc.zoom=clamp(bc.zoom*Math.exp(e.deltaY*.0012),.55,1.6);else mc.goal={d:clamp((mc.goal&&mc.goal.d||mc.dist)*Math.exp(e.deltaY*.0015),3,70)};},{passive:false});
 function tapAt(cx,cy){const a=app.getBoundingClientRect();ndc.set((cx-a.left)/a.width*2-1,-((cy-a.top)/a.height)*2+1);
@@ -1333,7 +1401,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
     Object.values(plots).forEach(o=>{if(o.pop!=null){o.pop+=dt*3;const k=Math.min(1,o.pop);o.model.scale.setScalar(1.3*(.82+.18*ease(k)+Math.sin(k*Math.PI)*.08));if(k>=1){o.model.scale.setScalar(1.3);o.pop=null;}}placeAt(o.el,V3(o.x,0,o.z+o.r*.95),bcam);});
     renderer.render(bscene,bcam);}
   else{mapCamUpdate(dt);mapFrame(dt);renderer.render(mscene,mcam);}
-  coachTick(dt);}
+  coachTick(dt);tutTick();}
 function placeAt(el,pos,cam){const s=screenOf(pos,cam);el.style.transform=`translate(${s.x.toFixed(1)}px,${s.y.toFixed(1)}px) translate(-50%,-50%)`;}
 function placeBelow(el,pos,r){const s=screenOf(pos,mcam);const e=screenOf(pos.clone().add(V3(0,0,r)),mcam);if(!s.ok){el.style.visibility='hidden';return;}el.style.visibility='';el.style.transform=`translate(${s.x.toFixed(1)}px,${(Math.max(s.y+12,e.y+6)).toFixed(1)}px) translate(-50%,0)`;}
 function mapFrame(dt){bg.material.uniforms.uT.value=T;starMats.forEach(m=>m.uniforms.uT.value=T);zones.forEach(m=>m.uniforms.uT.value=T);
@@ -1371,8 +1439,9 @@ const iOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='M
 const standalone=navigator.standalone||matchMedia('(display-mode: standalone),(display-mode: fullscreen)').matches;
 function iosHint(){if(!iOS||standalone||S.iosHint)return;$('#ios').innerHTML=`<div class="ios"><span><b>Play full screen:</b> tap Share <svg viewBox="0 0 24 24" fill="none" stroke="#bff6ff" stroke-width="2"><path d="M12 3v12M8 7l4-4 4 4M5 12v8h14v-8"/></svg> then <b>Add to Home Screen</b>. No browser bars.</span><button class="btn" id="iosOk">OK</button></div>`;
   $('#iosOk').onclick=()=>{S.iosHint=true;$('#ios').innerHTML='';save();};}
-if(!S.seenIntro){setTimeout(()=>advisor('Welcome to Halcyon Base','Commander, the base is yours. Droids are pushing into the Kestrel system and the Concord needs every base producing. Follow your missions at the bottom of the screen and I will walk you through it.','Begin',()=>{S.seenIntro=true;save();pulseMission();setTimeout(iosHint,30000);}),700);}
-else{setTimeout(iosHint,8000);if(offline>60)toast(`Welcome back. Your buildings kept producing for ${fmt(Math.min(offline,8*3600))}.`,'gold');}
+if(!S.seenIntro){setTimeout(()=>advisor('Welcome to Halcyon','Commander, you just landed. The droids leveled this outpost before we got here: all that is left is the Command Center. Let\'s get Halcyon Base running before they come back.','Let\'s build',()=>{S.seenIntro=true;save();tutStart();}),700);}
+else if(S.tut<TUT.length)setTimeout(tutStart,600);
+else{if(S.tut>=TUT.length)setTimeout(iosHint,8000);if(offline>60)toast(`Welcome back. Your buildings kept producing for ${fmt(Math.min(offline,8*3600))}.`,'gold');}
 window.__S=()=>S;window.__skip=s=>{S.G+=s;};window.__api={ships,battles,armies,patrols,plat,plots,goPoi,setTab,openPlot,goPlot,enterAim,aimAt,fireAim,movePlatform,byName,mc,bc,claimMission,startUpgrade,sendArmy,kes2,home,screenOf,mcam,bcam,V3};
 </script>
 
