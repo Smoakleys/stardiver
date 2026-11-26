@@ -17,7 +17,7 @@
 </head>
 <body>
 
-<div class="sd-build">build 2026-11-26 03:28 UTC</div>
+<div class="sd-build">build 2026-11-26 03:33 UTC</div>
 <meta name="sd-orient" content="any">
 <script>if(matchMedia("(pointer:coarse)").matches||navigator.maxTouchPoints>0)document.documentElement.classList.add("sd-touch")</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -523,6 +523,23 @@ html.sd-touch .sd-build,.sd-build{bottom:calc(1px + env(safe-area-inset-bottom,0
 .fc.loss{box-shadow:inset 0 0 0 1px #ff4d5e77;background:#ff4d5e14}.fc.loss b{color:#ff8a96}
 .chips{transition:opacity .2s}#app.toasting .chips{opacity:0;pointer-events:none}
 .sec .note+.btn{margin-top:10px}
+/* battle bar: the fight you're looking at, readable at a glance */
+.bbar{all:unset;box-sizing:border-box;position:absolute;left:calc(10px + var(--sal));right:calc(10px + var(--sar));top:calc(100px + var(--sat));z-index:6;cursor:pointer;
+  display:grid;gap:7px;padding:9px 12px 10px;border-radius:14px;background:linear-gradient(180deg,#1a1020f2,#0d0f1cf2);box-shadow:inset 0 0 0 1px #ff4d5e55,0 8px 22px #0009}
+.bbar .bh{display:flex;align-items:baseline;gap:8px}.bbar .bh b{font:700 15px var(--display);letter-spacing:.06em;color:#fff}
+.bbar .bh em{font:700 11px var(--display);letter-spacing:.12em;text-transform:uppercase;font-style:normal;padding:2px 7px;border-radius:6px}
+.bbar .bh em.win{background:#7dffb022;color:#7dffb0}.bbar .bh em.loss{background:#ff4d5e2a;color:#ff8a96}.bbar .bh em.even{background:#ffc94a22;color:#ffc94a}
+.bbar .bh small{margin-left:auto;font:500 11.5px var(--body);color:#9aa6bd}
+.bbar .bb{display:grid;grid-template-columns:1fr 1fr;gap:12px}.bbar .side{display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:2px 8px}
+.bbar .side small{font:600 9.5px var(--display);letter-spacing:.14em;color:#8f9bb3}.bbar .side b{font:700 14px var(--display);text-align:right;color:#fff}
+.bbar .side i{grid-column:1/3;height:6px;border-radius:3px;background:#ffffff14;overflow:hidden}.bbar .side u{display:block;height:100%;transition:width .5s}
+.bbar .o u{background:linear-gradient(90deg,#2aa6d6,#7fe8ff)}.bbar .d u{background:linear-gradient(90deg,#c8293a,#ff6d7c)}
+#app.map .chip.w{display:none}#app.map.bat .chips{top:calc(178px + var(--sat))}
+#app.L .bbar{left:calc(var(--rail) + 8px);top:calc(56px + var(--sat));right:auto;width:min(420px,48%)}#app.L.map.bat .chips{top:calc(134px + var(--sat))}
+.mk.dim{opacity:.72}
+.wb .cs{position:absolute;inset:0;display:grid;place-items:center;font:700 16px var(--display);color:#fff;text-shadow:0 1px 3px #000;pointer-events:none}
+.wb .cs:empty{display:none}.wb.off svg{opacity:.35}
+.wb.rdy{animation:wbr .6s ease-out}@keyframes wbr{0%{transform:scale(1)}40%{transform:scale(1.14)}100%{transform:scale(1)}}
 </style>
 
 <div id="app">
@@ -541,6 +558,7 @@ html.sd-touch .sd-build,.sd-build{bottom:calc(1px + env(safe-area-inset-bottom,0
     <button class="icb gear" id="gear2" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="#c9d4e6" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg></button>
     <div class="chips" id="chips"></div>
     <div class="weap" id="weap" hidden></div>
+    <button class="bbar" id="bbar" hidden></button>
     <div class="bot" id="bot">
       <button class="mis" id="mis"></button>
       <nav class="nav" id="nav">
@@ -1570,11 +1588,12 @@ function exitAimIf(){if(aim)exitAim();}
 
 /* weapons dock */
 function renderWeap(){const show=tab==='map'&&S.plat&&!aim;hud.weap.hidden=!show;if(!show)return;
-  if(!hud.weap.children.length)hud.weap.innerHTML=Object.entries(WEAP).map(([k,w])=>`<button class="wb" data-w="${k}" aria-label="${w.n}"><svg viewBox="0 0 24 24">${w.svg}</svg><i class="cd"></i><span>${w.n.toUpperCase()}</span></button>`).join('');
+  if(!hud.weap.children.length)hud.weap.innerHTML=Object.entries(WEAP).map(([k,w])=>`<button class="wb" data-w="${k}" aria-label="${w.n}"><svg viewBox="0 0 24 24">${w.svg}</svg><i class="cd"></i><b class="cs"></b><span>${w.n.toUpperCase()}</span></button>`).join('');
   updWeap();}
-function updWeap(){if(hud.weap.hidden)return;const b=platBattle();[...hud.weap.children].forEach(el=>{const w=el.dataset.w,left=cdLeft(w),f=left/WEAP[w].cd;
+function updWeap(){if(aim&&!hud.weap.hidden)hud.weap.hidden=true;if(hud.weap.hidden)return;const b=platBattle();[...hud.weap.children].forEach(el=>{const w=el.dataset.w,left=cdLeft(w),f=left/WEAP[w].cd;
   el.classList.toggle('off',!b||left>0);el.classList.toggle('ready',!!b&&left<=0);
-  el.querySelector('.cd').style.background=left>0?`conic-gradient(#000a ${f*360}deg,transparent 0)`:'none';});}
+  el.querySelector('.cd').style.background=left>0?`conic-gradient(#000a ${f*360}deg,transparent 0)`:'none';const cs=el.querySelector('.cs'),tx=left>0?Math.ceil(left)+'s':'';if(cs.textContent!==tx)cs.textContent=tx;
+  if(left<=0&&el._cd>0&&b){el.classList.remove('rdy');void el.offsetWidth;el.classList.add('rdy');sfx('soft');}el._cd=left;});}
 hud.weap.addEventListener('click',e=>{const b=e.target.closest('.wb');if(b)enterAim(b.dataset.w);});
 function renderAim(){if(!aim){hud.aim.innerHTML='';renderWeap();return;}const w=WEAP[aim.w];let hint;
   if(!aim.dir)hint=aim.w==='barrage'?`Tap the planet to aim the <b>Barrage</b>. Red ground fire is a droid column. Columns closest to your landing zone hurt most.`:`Tap the planet to place the <b>Shield</b>. It protects the troops under it: put it on your <b>landing zone</b>.`;
@@ -1800,7 +1819,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
     a.trail.forEach((s,i)=>{arc(A,B,ra,rb,Math.max(0,uu-i*.012),s.position);s.material.opacity=.35*(1-i/a.trail.length);s.scale.setScalar(.5*(1-i/a.trail.length)+.1);});
     if(u>=1)endMarch(a);}
   // battles
-  for(const b of [...battles])if(S.G>=b.next){b.next+=3.5;const r=battleRound(b);if(r.done)endBattle(b,r.win);}
+  for(const b of [...battles])if(S.G>=b.next){b.next+=3.5;const o0=osum(b.ours),d0=dsum(b);const r=battleRound(b);if(r.done)endBattle(b,r.win);else roundFx(b,o0-osum(b.ours),d0-dsum(b));}
   // platform
   if(S.plat){const ps=1.15*clamp((plat.at||plat.to||home).r/.9,.4,1);plat.g.scale.setScalar(plat.at?ps:1.15);if(plat.at){plat.ph+=dt*.35;const p=plat.at,R=p.r*1.75+.35;plat.g.position.set(Math.cos(plat.ph)*R,.35+Math.sin(plat.ph*.7)*.08,Math.sin(plat.ph)*R).add(p.group.position);plat.g.rotation.y=-plat.ph;plat.trail.forEach(s=>s.material.opacity=0);}
     else if(plat.to){const u=clamp((S.G-plat.t0)/plat.dur,0,1),uu=THREE.MathUtils.smoothstep(u,0,1);arc(plat.from,plat.to.group.position,.4,plat.to.r*1.8,uu,plat.g.position);
@@ -1808,7 +1827,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
       if(u>=1){plat.at=plat.to;plat.to=null;S.plat={at:plat.at.name};toast(`Orbital Platform in orbit over ${plat.at.name}.`,'gold');renderWeap();renderChips();if(sheetFor==='planet'&&selP)selectPlanet(selP);}}
     plat.g.userData.mz.material.opacity=.6+.4*Math.sin(T*6);}
   patrols.forEach(pt=>{const a=pt.ph+T*.04;pt.g.position.set(pt.c.x+Math.cos(a)*2.2,.3,pt.c.z+Math.sin(a)*1.6);pt.g.rotation.y=-a;});
-  chipT+=dt;if(chipT>.25){chipT=0;renderChips();plotTimers();if(sheetFor==='speed'){const l=$('#spL');}updWeap();renderMission();}
+  chipT+=dt;if(chipT>.25){chipT=0;renderChips();renderBBar();plotTimers();if(sheetFor==='speed'){const l=$('#spL');}updWeap();renderMission();}
   if(tab==='base'){baseCamUpdate(dt);baseTick(T);app.classList.toggle('zfar',bc.zoom<bc.zdef*.72);
     for(let i=bursts.length-1;i>=0;i--){const b=bursts[i];b.t+=dt;b.s.position.addScaledVector(b.v,dt);b.v.y-=dt*3;b.s.material.opacity=1-b.t/1;if(b.t>1){bscene.remove(b.s);bursts.splice(i,1);}}
     Object.values(plots).forEach(o=>{if(o.pop!=null){o.pop+=dt*3;const k=Math.min(1,o.pop);basePlotScale(o.k,.82+.18*ease(k)+Math.sin(k*Math.PI)*.08);if(k>=1){basePlotScale(o.k,1);o.pop=null;}}
@@ -1816,8 +1835,25 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
     renderer.render(bscene,bcam);}
   else{mapCamUpdate(dt);mapFrame(dt);renderer.render(mscene,mcam);}
   coachTick(dt);tutTick();tickNums(dt);hudT+=dt;if(hudT>.15){hudT=0;avoidHud();}}
+/* battle readability: what the round did, shown where it happened, only when you're looking */
+const inView=b=>tab==='map'&&mc.dist<18&&(()=>{const s=screenOf(b.planet.group.position,mcam);return s.ok&&s.x>0&&s.x<app.clientWidth&&s.y>0&&s.y<app.clientHeight;})();
+function roundFx(b,lostO,lostD){if(!inView(b)||S.G-b.next>4)return;const P=b.planet.group.position,R=b.planet.r*1.05;
+  const big=b.cols.slice().sort((x,y)=>y.n-x.n)[0];
+  if(lostD>=1)ftext(`−${nf(lostD)}`,screenOf(big.dir.clone().multiplyScalar(R).add(P),mcam),'#ffe7a8');
+  if(lostO>=1)setTimeout(()=>ftext(`−${nf(lostO)}`,screenOf(b.lz.clone().multiplyScalar(R).add(P),mcam),'#ff9aa4'),260);
+  sfx('boom');}
+const bbar=$('#bbar');bbar.onclick=()=>{const b=bbar._b;if(b){focusPlanet(b.planet,Math.max(4,b.planet.r*11),.06);}};
+function renderBBar(){const b=tab==='map'?(battles.slice().sort((x,y)=>x.planet.group.position.distanceTo(mc.t)-y.planet.group.position.distanceTo(mc.t))[0]):null;
+  bbar.hidden=!b;app.classList.toggle('bat',!!b);bbar._b=b;if(!b)return;
+  const o=osum(b.ours),o0=osum(b.ours0),d=dsum(b),d0=b.cols.reduce((s,c)=>s+c.n0,0),ol=o/o0,dl=d/d0;
+  if(!b._fc||S.G-b._fcT>1){b._fcT=S.G;const c={ours:{...b.ours},ours0:{...b.ours0},lost:{...b.lost},cols:b.cols.map(c=>({k:c.k,n:c.n,n0:c.n0})),lz:b.lz,round:b.round,rounds:b.rounds,kills:0,w:.78,shield:null};let r;do{r=battleRound(c,true);}while(!r.done);
+    b._fc=osum(c.ours)/o0-dsum(c)/d0;}// verdict = where this fight ends up if nothing changes
+  const st=b._fc>.25?['win','Winning']:b._fc>0?['even','Edging it']:b._fc>-.2?['even','Close']:['loss','Losing'];
+  const h=`<span class="bh"><b>${b.planet.name}</b><em class="${st[0]}">${st[1]}</em><small>Round ${Math.min(b.round+1,b.rounds)}/${b.rounds} · next in ${Math.max(0,Math.ceil(b.next-S.G))}s</small></span>
+   <span class="bb"><span class="side o"><small>YOUR TROOPS</small><b>${nf(Math.round(o))}</b><i><u style="width:${(ol*100).toFixed(1)}%"></u></i></span><span class="side d"><small>DROIDS</small><b>${nf(Math.round(d))}</b><i><u style="width:${(dl*100).toFixed(1)}%"></u></i></span></span>`;
+  if(bbar._h!==h){bbar._h=h;bbar.innerHTML=h;}}
 /* world labels never sit under the HUD or get cut by the screen edge: they fade out instead */
-let hudT=0;const HUD_SEL='.pow,#res,#chips .chip,#mis,#nav,#weap .wb,#weap .wb span,#sheet .sheet,.icb,#aim .aimbar,#tut .tbub,#toasts .toast';
+let hudT=0;const HUD_SEL='.pow,#res,#bbar,#chips .chip,#mis,#nav,#weap .wb,#weap .wb span,#sheet .sheet,.icb,#aim .aimbar,#tut .tbub,#toasts .toast';
 function avoidHud(){const a=app.getBoundingClientRect();const rs=[];document.querySelectorAll(HUD_SEL).forEach(e=>{const r=e.getBoundingClientRect();if(r.width&&r.height)rs.push(r);});
   for(const el of (tab==='base'?LB:LM).children){const r=(el.querySelector('.nm')||el).getBoundingClientRect();if(!r.width)continue;
     const hit=r.left<a.left+4||r.right>a.right-4||rs.some(h=>r.left<h.right+3&&r.right>h.left-3&&r.top<h.bottom+3&&r.bottom>h.top-3);el.classList.toggle('hid',hit);}
@@ -1843,11 +1879,14 @@ function mapFrame(dt){bg.material.uniforms.uT.value=T;starMats.forEach(m=>m.unif
   patrols.forEach(pt=>{placeBelow(pt.el,pt.pos(),.6);pt.el.querySelector('.f').textContent=pt.busy?'YOUR ARMY INBOUND':pt.poi?`INTERCEPTED · ${fmt(pt.poi.exp-S.G)} LEFT`:`LV ${pt.lv} · TAP TO ENGAGE`;});
   armies.forEach(a=>{a.el.textContent=`${a.dir==='back'?'RETURNING':'ARMY'} · ${fmt(a.dur-(S.G-a.t0))}`;placeBelow(a.el,a.g.position,.4);});
   if(S.plat){const ps=screenOf(plat.g.position,mcam);platLabel.style.visibility=ps.ok?'':'hidden';platLabel.style.transform=`translate(${(ps.x+16).toFixed(1)}px,${ps.y.toFixed(1)}px) translate(0,-50%)`;platLabel.style.display=mc.dist<30?'':'none';}else platLabel.style.display='none';
-  battles.forEach(b=>{const p=b.planet,P=p.group.position;const showMk=!!aim&&aim.b===b;
+  battles.forEach(b=>{const p=b.planet,P=p.group.position;const aimed=!!aim&&aim.b===b,showMk=aimed||inView(b)&&mc.dist<11;const placed=[];
     b.cols.forEach(c=>{const f=clamp(c.n/c.n0,0,1);c.fx.forEach((x,i)=>{x.s.position.copy(c.dir).add(x.o).normalize().multiplyScalar(p.r*1.04).add(P);x.s.material.opacity=f>0.02?(.5+.5*Math.random())*(.35+.65*f):0;x.s.scale.setScalar(p.r*(.1+.08*f));});
-      c.el.style.display=showMk&&c.n>=1?'':'none';if(showMk){c.el.textContent=`~${nf(c.n)} ${DROIDS[c.k].n.toUpperCase()}`;place(c.el,c.dir.clone().multiplyScalar(p.r*1.05).add(P),mcam,-10);}});
+      c.el.style.display=showMk&&c.n>=1?'':'none';c.el.classList.toggle('dim',!aimed);if(showMk&&c.n>=1){const t=`~${nf(c.n)} ${DROIDS[c.k].n.toUpperCase()}`;if(c.el.textContent!==t)c.el.textContent=t;const q=place(c.el,c.dir.clone().multiplyScalar(p.r*1.05).add(P),mcam,-10);if(q)placed.push([c.el,q]);}});
     b.lzfx.forEach(x=>{x.s.position.copy(b.lz).add(x.o).normalize().multiplyScalar(p.r*1.04).add(P);x.s.material.opacity=.5+.4*Math.random();x.s.scale.setScalar(p.r*.12);});
-    b.lzel.style.display=showMk?'':'none';if(showMk)place(b.lzel,b.lz.clone().multiplyScalar(p.r*1.05).add(P),mcam,-10);});}
+    b.lzel.style.display=showMk?'':'none';b.lzel.classList.toggle('dim',!aimed);if(showMk){const q=place(b.lzel,b.lz.clone().multiplyScalar(p.r*1.05).add(P),mcam,-10);if(q)placed.unshift([b.lzel,q]);}
+    // labels that would overlap step aside vertically (landing zone keeps its spot)
+    for(let i=1;i<placed.length;i++){const [el,q]=placed[i];let guard=0;for(let j=0;j<i;j++){const r=placed[j][1];if(Math.abs(r.x-q.x)<118&&Math.abs(r.y-q.y)<22){q.y=r.y+22;if(++guard<8)j=-1;}}
+      el.style.transform=`translate(${q.x.toFixed(1)}px,${q.y.toFixed(1)}px) translate(-50%,-100%)`;}});}
 
 /* boot */
 planets.forEach(refreshPlanet);Object.keys(PLOTS).forEach(k=>refreshPlot(k));
