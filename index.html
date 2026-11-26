@@ -17,7 +17,7 @@
 </head>
 <body>
 
-<div class="sd-build">build 2026-11-26 03:59 UTC</div>
+<div class="sd-build">build 2026-11-26 04:00 UTC</div>
 <meta name="sd-orient" content="any">
 <script>if(matchMedia("(pointer:coarse)").matches||navigator.maxTouchPoints>0)document.documentElement.classList.add("sd-touch")</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1292,6 +1292,8 @@ function battleRound(b,instant){
 function endBattle(b,win){battles.splice(battles.indexOf(b),1);b.ships.forEach(dropShip);b.cols.forEach(c=>{c.fx.forEach(f=>mscene.remove(f.s));c.el.remove();});b.lzfx.forEach(f=>mscene.remove(f.s));b.lzel.remove();
   const p=b.planet;const before=p.ctrl;
   if(win)p.ctrl=Math.min(100,p.ctrl+6/Math.sqrt(p.diff));else p.ctrl=Math.min(100,p.ctrl+.4);S.ctrl[p.name]=p.ctrl;refreshPlanet(p);
+  if(before<100&&p.ctrl>=100){stat('liberated');const lrw={medals:300,alloy:3000,fuel:2000,'sp:1h':1};give(lrw);
+    setTimeout(()=>{sfx('levelup');rewardModal('PLANET LIBERATED',`${p.name} is Concord`,lrw,null,{say:'The droids have left. Mostly. One is still filing paperwork.'});},400);}
   const lost={},wnd={};TYPES.forEach(t=>{const L=Math.round(b.lost[t]);wnd[t]=Math.round(L*.35);lost[t]=L-wnd[t];S.wounded[t]+=wnd[t];});
   const surv={};TYPES.forEach(t=>surv[t]=Math.round(b.ours[t]));
   const kills=Math.round(b.kills);const rw=win?{alloy:Math.round(kills*2.4),fuel:Math.round(kills*1.6),medals:Math.round(30+kills*.15)}:{alloy:Math.round(kills*.8)};
