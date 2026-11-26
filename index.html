@@ -17,7 +17,7 @@
 </head>
 <body>
 
-<div class="sd-build">build 2026-11-26 03:57 UTC</div>
+<div class="sd-build">build 2026-11-26 03:59 UTC</div>
 <meta name="sd-orient" content="any">
 <script>if(matchMedia("(pointer:coarse)").matches||navigator.maxTouchPoints>0)document.documentElement.classList.add("sd-touch")</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1064,8 +1064,23 @@ const SFX=(()=>{let ac=null,master=null,comp=null,noiseBuf=null,on=true,last={};
   const GAP={coin:.04,tap:.03,soft:.03,boom:.06};
   function play(name){if(!on||!ac||ac.state!=='running'||document.hidden)return;const f=LIB[name];if(!f)return;const t=now();
     if(last[name]&&t-last[name]<(GAP[name]||.08))return;last[name]=t;try{f(t+.005);}catch(e){}}
+  /* MUSIC: a slow generative ambient bed. Soft detuned pads through a lowpass, a chord every ~9 s, sparse bell notes.
+     Quiet on purpose: it should feel like space, not a soundtrack fighting the effects. */
+  let mOn=true,mBus=null,mTimer=null,mStep=0;try{mOn=localStorage.getItem('sd-music')!=='0';}catch(e){}
+  const CH=[[50,57,62,65,69],[46,53,58,62,65],[41,48,57,60,64],[48,55,60,64,67]];// Dm9, Bbmaj7, Fmaj7, C6/9-ish
+  function pad(n,t,dur){const f=N(n);[-6,6].forEach(dt=>{const o=ac.createOscillator(),g=ac.createGain();o.type='sawtooth';o.frequency.value=f;o.detune.value=dt;
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.022,t+3.2);g.gain.setValueAtTime(.022,t+dur-3.5);g.gain.linearRampToValueAtTime(0,t+dur);o.connect(g);g.connect(mBus);o.start(t);o.stop(t+dur+.1);});}
+  function bell(n,t){const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=N(n);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.035,t+.02);g.gain.exponentialRampToValueAtTime(.0005,t+4);o.connect(g);g.connect(mBus);o.start(t);o.stop(t+4.1);}
+  function mTick(){if(!ac||ac.state!=='running'||!mOn||document.hidden)return;const t=ac.currentTime+.1,c=CH[mStep++%CH.length];
+    c.forEach((n,i)=>pad(n-(i?0:12),t+i*.15,10.5));if(Math.random()<.7){const pick=c[1+Math.floor(Math.random()*4)]+12;bell(pick,t+1.5+Math.random()*4);}if(Math.random()<.35)bell(c[2]+24,t+6+Math.random()*2);}
+  function music(){init();if(!ac||mBus)return;mBus=ac.createGain();mBus.gain.value=mOn?.6:0;const lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=900;lp.Q.value=.4;
+    const lfo=ac.createOscillator(),lg=ac.createGain();lfo.frequency.value=.05;lg.gain.value=350;lfo.connect(lg);lg.connect(lp.frequency);lfo.start();
+    const dl=ac.createDelay(1.5),fb=ac.createGain(),wet=ac.createGain();dl.delayTime.value=.62;fb.gain.value=.38;wet.gain.value=.45;
+    mBus.connect(lp);lp.connect(comp);lp.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(wet);wet.connect(comp);mTick();mTimer=setInterval(mTick,9000);}
+  addEventListener('pointerup',()=>{if(ac&&ac.state==='running')music();},{capture:true,passive:true});
+  function setMusic(v){mOn=v;try{localStorage.setItem('sd-music',v?'1':'0');}catch(e){}if(mBus)mBus.gain.setTargetAtTime(v?.6:0,ac.currentTime,.4);if(v&&!mBus)music();}
   function set(v){on=v;try{localStorage.setItem('sd-sound',v?'1':'0');}catch(e){}if(master)master.gain.value=v?.55:0;}
-  return{play,set,get on(){return on;}};})();
+  return{play,set,setMusic,get on(){return on;},get music(){return mOn;}};})();
 const sfx=n=>SFX.play(n);
 /* haptics: Android has vibrate(); iOS 18+ Safari ticks the Taptic Engine when a switch checkbox is toggled by a tap */
 const HAPT=(()=>{let lbl=null,on=true;try{on=localStorage.getItem('sd-haptic')!=='0';}catch(e){}
@@ -1761,10 +1776,11 @@ function levelBanner(name,lv){sfx(lv===1?'done':'levelup');haptic(15);const d=do
   d.innerHTML=`<div class="k">${lv===1?'CONSTRUCTION COMPLETE':'LEVEL UP'}</div><div class="t">${name}<span>LV ${lv}</span></div><div class="p">${ic('power')}+${nf(dp)} POWER</div>`;FX.appendChild(d);setTimeout(()=>d.remove(),2300);}
 function openSettings(){const tg=(id,on,lbl,sub)=>`<button class="tgl" id="${id}" aria-pressed="${on}"><span><b>${lbl}</b><small>${sub}</small></span><i></i></button>`;
   modal(`<button class="x" aria-label="Close">✕</button><h3>Settings</h3>
-  <div class="sec">${tg('oSnd',SFX.on,'Sound','Silent switch also mutes.')}${tg('oHap',HAPT.on,'Haptics','Taps you can feel.')}</div>
+  <div class="sec">${tg('oSnd',SFX.on,'Sound','Silent switch also mutes.')}${tg('oMus',SFX.music,'Music','Quiet ambient.')}${tg('oHap',HAPT.on,'Haptics','Taps you can feel.')}</div>
   <p><b style="color:#fff">Full screen:</b> Share → Add to Home Screen.</p>
   <div class="sec"><div class="h">Progress</div><button class="btn" id="rst">Reset progress</button></div>`,null,()=>{
   $('#oSnd').onclick=e=>{const v=!SFX.on;SFX.set(v);e.currentTarget.setAttribute('aria-pressed',v);sfx('tap');};
+  $('#oMus').onclick=e=>{const v=!SFX.music;SFX.setMusic(v);e.currentTarget.setAttribute('aria-pressed',v);};
   $('#oHap').onclick=e=>{const v=!HAPT.on;HAPT.set(v);e.currentTarget.setAttribute('aria-pressed',v);haptic(10);};
   $('#rst').onclick=e=>{const b=e.currentTarget;if(b.dataset.ok){localStorage.removeItem(SAVE);S=null;location.reload();return;}b.dataset.ok=1;b.textContent='Tap again to wipe everything';b.style.borderColor='#ff4d5e';};});}
 $('#gear1').onclick=openSettings;$('#gear2').onclick=openSettings;
