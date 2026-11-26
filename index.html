@@ -17,7 +17,7 @@
 </head>
 <body>
 
-<div class="sd-build">build 2026-11-26 03:54 UTC</div>
+<div class="sd-build">build 2026-11-26 03:56 UTC</div>
 <meta name="sd-orient" content="any">
 <script>if(matchMedia("(pointer:coarse)").matches||navigator.maxTouchPoints>0)document.documentElement.classList.add("sd-touch")</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -543,6 +543,7 @@ html.sd-touch .sd-build,.sd-build{bottom:calc(1px + env(safe-area-inset-bottom,0
 .pl .ast{font:700 9px/1 var(--display);letter-spacing:.12em;color:#fff;background:#c8293a;padding:3px 6px;border-radius:5px;margin-bottom:3px;animation:astp 1.2s ease-in-out infinite;text-shadow:none}
 @keyframes astp{50%{background:#ff4d5e;box-shadow:0 0 12px #ff4d5e}}
 .chip.a{border-left-color:var(--foe)}.chip.a .ci{background:linear-gradient(180deg,#ff6d4a,#b0261c)}
+.wv{display:flex;flex-wrap:wrap;gap:6px}.wv span{font:500 12.5px var(--body);color:#c9d4e6;background:#ff4d5e18;box-shadow:inset 0 0 0 1px #ff4d5e40;border-radius:8px;padding:5px 8px}.wv b{color:#fff;font-family:var(--display)}
 </style>
 
 <div id="app">
@@ -1691,7 +1692,9 @@ function selectPlanet(p){const prev=selP;selP=p;if(prev)refreshPlanet(prev);refr
   const war=p.side==='war'||p.side==='foe';const wave=war?waveFor(p):null;
   let h=hd(p.home?'YOUR HOME PLANET':p.side==='war'?'CONTESTED':p.side==='foe'?'DROID-HELD':p.side==='ally'?'CONCORD-HELD':'UNCLAIMED',p.name);
   if(p.ctrl!=null&&!p.home)h+=`<div class="pbar" style="height:7px;background:#ff4d5e"><b style="width:${p.ctrl}%;background:var(--ally)"></b></div><div class="kv" style="margin-top:6px"><span>Concord control</span><b>${Math.round(p.ctrl)}%</b></div>`;
-  if(war){const tot=wave.reduce((s,w)=>s+w.n,0);h+=`<div class="sec"><div class="h">Expected droid wave · ~${nf(tot)}</div>${wave.map(w=>`<div class="kv"><span>${DROIDS[w.k].n} <span class="note">(${TN[DROIDS[w.k].ty]})</span></span><b>~${nf(w.n)}</b></div>`).join('')}</div>`;}
+  if(war){const tot=wave.reduce((s,w)=>s+w.n,0);h+=`<div class="sec"><div class="h">Droid wave · ~${nf(tot)}</div><div class="wv">${wave.map(w=>`<span><b>${nf(w.n)}</b> ${DROIDS[w.k].n}</span>`).join('')}</div>`;
+    const home={...S.troops};const f=forecast({planet:p},home);if(f){const [cls,txt]=f.m>.3?['win','Decisive victory']:f.m>0?['win','Likely victory']:f.m>-.2?['close','Close fight']:['loss','Likely defeat'];
+      h+=`<div class="fc ${cls}"><span class="k">ALL YOUR TROOPS · ${nf(osum(home))}</span><b>${txt}</b></div>`;}h+=`</div>`;}
   if(S.as&&S.as.p===p.name)h+=`<div class="fc loss"><span class="k">DROID ASSAULT INBOUND</span><b>Lands in ${fmt(S.as.at-S.G)}</b><small>Win here first: bonus loot. Ignore it: −3% control.</small></div>`;
   if(p.home)h+=``;
   else if(p.side==='ally')h+=`<p>Concord-held. Quiet.</p>`;
