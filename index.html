@@ -17,7 +17,7 @@
 </head>
 <body>
 
-<div class="sd-build">build 2026-11-26 04:00 UTC</div>
+<div class="sd-build">build 2026-11-26 04:03 UTC</div>
 <meta name="sd-orient" content="any">
 <script>if(matchMedia("(pointer:coarse)").matches||navigator.maxTouchPoints>0)document.documentElement.classList.add("sd-touch")</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -548,6 +548,7 @@ html.sd-touch .sd-build,.sd-build{bottom:calc(1px + env(safe-area-inset-bottom,0
 #modal .modal{max-height:calc(100% - 20px - var(--sat) - var(--sab,0px));overflow-y:auto;overscroll-behavior:contain}
 #app.L #modal .modal .tiles .rt{padding-top:8px;padding-bottom:8px}
 #brOk,#rwOk,#advOk{position:sticky;bottom:0;z-index:2;box-shadow:0 -10px 18px #0b1220}
+.rlv{font:600 11px var(--display);color:#4fe3ff;margin-left:4px}
 </style>
 
 <div id="app">
@@ -1123,14 +1124,22 @@ const BDEF={
 };
 const costOf=(k,l)=>{const c={};Object.entries(BDEF[k].cost).forEach(([r,v])=>c[r]=Math.round(v*Math.pow(1.85,Math.max(0,l-2))/10)*10);return c;};
 const timeOf=(k,l)=>l===1?(BDEF[k].t1||8):Math.round((TT[l]||TT[TT.length-1]*2)*(BDEF[k].tm||1));
-const rateOf=(k,l)=>BDEF[k].rate*.25*Math.pow(l,1.3);// per second. Tuned so income keeps pace with build timers: an upgrade costs roughly 15-30 min of income, so resources are a real choice and droid loot matters
+const rateOf=(k,l)=>BDEF[k].rate*.25*Math.pow(l,1.3)*(1+.1*rl('yield'));// per second. Tuned so income keeps pace with build timers: an upgrade costs roughly 15-30 min of income, so resources are a real choice and droid loot matters
 const capOf=(k,l)=>800*l;
 const RESEARCH=[
   {k:'atk',n:'Hardened Rounds',d:'+10% troop attack',cost:{credits:250},t:45},
-  {k:'march',n:'Jump Calibration',d:'Armies 20% faster',cost:{credits:400},t:150},
+  {k:'yield',n:'Deep Refining',d:'+10% production',cost:{credits:300,alloy:200},t:90},
+  {k:'drill',n:'Drill Sergeants',d:'+15% training speed',cost:{credits:350,fuel:200},t:120},
+  {k:'march',n:'Jump Calibration',d:'Armies 10% faster',cost:{credits:400},t:150},
+  {k:'armor',n:'Ablative Plating',d:'−8% troop losses',cost:{credits:450,alloy:300},t:240},
+  {k:'loot',n:'Salvage Crews',d:'+15% battle loot',cost:{credits:400,fuel:250},t:200},
   {k:'barrage',n:'Dense Barrage',d:'Barrage +30%',cost:{credits:500,alloy:300},t:420},
-  {k:'shield',n:'Wide Shield',d:'Shield +30% size',cost:{credits:500,fuel:300},t:420},
+  {k:'shield',n:'Wide Shield',d:'Shield +15% size',cost:{credits:500,fuel:300},t:420},
 ];
+/* every research has 5 levels; level n needs Research Lab Lv n. S.done[k] holds the level (old saves stored 1 = Lv 1) */
+const RMAX=5,rl=k=>+(S.done[k]||0);
+const rCost=(r,lv)=>Object.fromEntries(Object.entries(r.cost).map(([k,v])=>[k,Math.round(v*Math.pow(2.2,lv-1)/10)*10]));
+const rTime=(r,lv)=>Math.round(r.t*Math.pow(2.6,lv-1));
 const WEAP={barrage:{n:'Barrage',cd:20,rad:.36,svg:'<path d="M12 2v13M8 11l4 4 4-4M5 20h14"/>'},shield:{n:'Shield',cd:32,rad:.42,rounds:3,svg:'<path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/>'}};
 const DIFF={'KESTREL II':1.0,'KESTREL IV':1.5,'KESTREL VI':1.3,'VARN':1.5,'MYRE':1.2,'GLOAM':1.8,'HASK':1.4,'UMBRA':1.7,'NERESH PRIME':2.2};
 const MIX={'KESTREL II':{rivet:.62,gnat:.26,bulwark:.12},'KESTREL IV':{rivet:.45,bulwark:.15,stomper:.15,lobber:.1,gnat:.15},'KESTREL VI':{gnat:.5,rivet:.3,lobber:.2},'VARN':{stomper:.4,rivet:.4,bulwark:.2},'MYRE':{lobber:.35,rivet:.45,gnat:.2}};
@@ -1165,7 +1174,7 @@ function pay(c){Object.entries(c).forEach(([k,v])=>S.res[k]-=v);renderTop();}
 function give(rw,from){const out=[];Object.entries(rw).forEach(([k,v])=>{if(k.startsWith('sp:')){const s=k.slice(3);S.items[s]=(S.items[s]||0)+v;out.push(`${v}× ${s} speed-up`);}else{S.res[k]=(S.res[k]||0)+v;out.push(`${nf(v)} ${k[0].toUpperCase()+k.slice(1)}`);if(from)flyRes(k,from);}});renderTop();return out.join(', ');}
 function rwText(rw){return Object.entries(rw).map(([k,v])=>k.startsWith('sp:')?`${v}× ${k.slice(3)} speed-up`:`${nf(v)} ${k[0].toUpperCase()+k.slice(1)}`).join(' · ');}
 function power(){let p=0;const add=tr=>TYPES.forEach(t=>p+=(tr[t]||0)*OURS[t].pow);add(S.troops);armies.forEach(a=>add(a.troops));battles.forEach(b=>add(b.ours));
-  Object.values(S.b).forEach(l=>p+=l*l*40);p+=Object.keys(S.done).length*300;return Math.round(p);}
+  Object.values(S.b).forEach(l=>p+=l*l*40);Object.keys(S.done).forEach(k=>p+=rl(k)*300);return Math.round(p);}
 /* production collects automatically (Bridger, economy thread). store[] only feeds the little +N pops over each building */
 function prodTick(dt){['refinery','extractor','hub'].forEach(k=>{const l=S.b[k];if(!l)return;const v=rateOf(k,l)*dt;S.res[BDEF[k].prod]+=v;S.store[k]=(S.store[k]||0)+v;});}
 function popProd(k){const v=Math.floor(S.store[k]||0);if(v<1)return;S.store[k]-=v;const r=BDEF[k].prod;const p=plots[k];
@@ -1194,21 +1203,21 @@ function useSpeed(kind,code){const job=kind==='build'?S.build:kind==='research'?
 function trainMax(k){return 100*S.b[k]+50;}
 function trainCost(t,n){return{alloy:OURS[t].alloy*n,fuel:OURS[t].fuel*n};}
 function trainTime(k,t,n){if(tutOn()&&TUT[S.tut].train)return 60;// the tutorial batch takes a minute so the speed-up step means something
-  return Math.round(n*OURS[t].t/(1+.15*(S.b[k]-1)));}
+  return Math.round(n*OURS[t].t/(1+.15*(S.b[k]-1))/(1+.15*rl('drill')));}
 function startTrain(k,n){const t=BDEF[k].trains;if(S.train[k]){toast('Already training.','warn');return;}const c=trainCost(t,n);if(!canPay(c)){toast('Not enough resources.','warn');return;}
   pay(c);S.train[k]={t,n,start:S.G,end:S.G+trainTime(k,t,n)};refreshPlot(k);renderChips();closeSheet();sfx('train');haptic(10);}
 function troopsDone(k){const q=S.train[k];if(!q)return;S.troops[q.t]+=q.n;delete S.train[k];const p=plots[k];
   if(tab==='base'){const sc=screenOf(V3(p.x,p.h+.6,p.z),bcam);ftext(`+${q.n} ${TN[q.t]}`,sc,'#7dffb0');}
   sfx('train');stat('trained',q.n);refreshPlot(k);renderTop();renderChips();}
-function startResearch(r){if(S.research){toast('Lab is busy.','warn');return;}if(!canPay(r.cost)){toast('Not enough resources.','warn');return;}
-  pay(r.cost);S.research={k:r.k,n:r.n,start:S.G,end:S.G+r.t};stat('research');refreshPlot('lab');renderChips();openPlot('lab');}
+function startResearch(r){if(S.research){toast('Lab is busy.','warn');return;}const lv=rl(r.k)+1,c=rCost(r,lv);if(lv>RMAX||lv>S.b.lab)return;if(!canPay(c)){toast('Not enough resources.','warn');return;}
+  pay(c);S.research={k:r.k,n:r.n,lv,start:S.G,end:S.G+rTime(r,lv)};stat('research');refreshPlot('lab');renderChips();openPlot('lab');}
 function freeResearch(){if(S.research&&S.research.end-S.G<=FREE){S.research.end=S.G;tickTimers();}}
 function healAll(){const n=TYPES.reduce((s,t)=>s+S.wounded[t],0);if(!n)return;const c={fuel:Math.ceil(n*.5)};if(!canPay(c)){toast('Not enough Fuel.','warn');return;}pay(c);
   S.heal={tr:{...S.wounded},start:S.G,end:S.G+Math.max(5,Math.round(n*.08))};TYPES.forEach(t=>S.wounded[t]=0);renderChips();closeSheet();sfx('done');}
 function tickTimers(){
   if(S.build&&S.G>=S.build.end)finishBuild();
   Object.entries(S.train).forEach(([k,q])=>{if(S.G>=q.end)troopsDone(k);});
-  if(S.research&&S.G>=S.research.end){S.done[S.research.k]=1;toast(`${S.research.n} done`,'gold');sfx('done');S.research=null;refreshPlot('lab');renderChips();renderTop();afterStat();}
+  if(S.research&&S.G>=S.research.end){S.done[S.research.k]=S.research.lv||1;toast(`${S.research.n} Lv ${S.research.lv||1}`,'gold');sfx('done');S.research=null;refreshPlot('lab');renderChips();renderTop();afterStat();}
   if(S.heal&&S.G>=S.heal.end){TYPES.forEach(t=>S.troops[t]+=S.heal.tr[t]);toast('Troops healed');S.heal=null;renderChips();renderTop();}}
 /* Listening Post: intercepts arrive over time. Some are just droids talking; some reveal a bonus target. */
 const POI_KINDS=[{name:'Droid Supply Convoy',msg:n=>`Convoy 3 to Depot: hauling ${n} crates of parts through the lane. Please do not tell anyone where we are. Location attached.`},
@@ -1223,7 +1232,7 @@ function commsTick(){const l=S.b.comms;if(!l||S.tut<TUT_COMMS)return;const C=S.c
 function commsExpire(){patrols.filter(p=>p.poi&&(S.G>p.poi.exp)&&!p.busy).forEach(p=>{p.poi.done=true;despawn(p);});}
 const unread=()=>S.comms.log.filter(m=>!m.read).length;
 S.comms.log.forEach(m=>{if(m.poi&&!m.poi.done&&m.poi.exp>S.G)spawnPatrol(-1,m.poi);});
-const atkMul=()=>1+(S.done.atk?.1:0);
+const atkMul=()=>1+.1*rl('atk');
 
 /* =====================================================================
    STAR MAP RULES: armies, planet battles, patrols, the platform
@@ -1237,7 +1246,7 @@ function refreshPlanet(p){p.side=sideOf(p);p.el.className='pl '+p.side+(selP===p
 let selP=null;
 const slots=()=>S.b.cc>=5?3:2;
 const busy=()=>armies.length+battles.length;
-function marchTime(A,B){return (6+A.distanceTo(B)*0.24)*(S.done.march?.8:1);}
+function marchTime(A,B){return (6+A.distanceTo(B)*0.24)*(1-.1*rl('march'));}
 function sendArmy(target,tr){const tot=TYPES.reduce((s,t)=>s+tr[t],0);if(!tot){toast('Pick troops','warn');return false;}
   if(busy()>=slots()){toast('All army slots busy','warn');return false;}
   const A=home.group.position,B=target.pos();const fuel=Math.round(20+A.distanceTo(B)*3);if(S.res.fuel<fuel){toast(`Need ${fuel} Fuel`,'warn');return false;}
@@ -1284,7 +1293,7 @@ function battleRound(b,instant){
   let dd=0;b.cols.forEach(c=>{const w=b.w?b.w:instant?1:.55+.45*clamp(1-c.dir.angleTo(b.lz)/1.0,0,1);dd+=c.n*DROIDS[c.k].atk*w;});
   if(b.shield&&b.round<b.shield.until)dd*=1-.6*b.shield.cov;
   dd*=KD;
-  TYPES.forEach(t=>{if(!b.ours[t])return;let w=0,tot=0;b.cols.forEach(c=>{tot+=c.n;w+=c.n*mult(c.k&&DROIDS[c.k].ty,t);});const m=tot?w/tot:1;const loss=Math.min(b.ours[t],dd*(b.ours[t]/O)*m/OURS[t].hp);b.ours[t]-=loss;b.lost[t]+=loss;});
+  TYPES.forEach(t=>{if(!b.ours[t])return;let w=0,tot=0;b.cols.forEach(c=>{tot+=c.n;w+=c.n*mult(c.k&&DROIDS[c.k].ty,t);});const m=tot?w/tot:1;const loss=Math.min(b.ours[t],dd*(b.ours[t]/O)*m/OURS[t].hp*(1-.08*rl('armor')));b.ours[t]-=loss;b.lost[t]+=loss;});
   if(!instant)b.cols.forEach(c=>{c.dir.lerp(b.lz,.07).normalize();});
   b.round++;
   const dl=dsum(b)/b.cols.reduce((s,c)=>s+c.n0,0),ol=osum(b.ours)/osum(b.ours0);
@@ -1297,7 +1306,7 @@ function endBattle(b,win){battles.splice(battles.indexOf(b),1);b.ships.forEach(d
   const lost={},wnd={};TYPES.forEach(t=>{const L=Math.round(b.lost[t]);wnd[t]=Math.round(L*.35);lost[t]=L-wnd[t];S.wounded[t]+=wnd[t];});
   const surv={};TYPES.forEach(t=>surv[t]=Math.round(b.ours[t]));
   const kills=Math.round(b.kills);const rw=win?{alloy:Math.round(kills*2.4),fuel:Math.round(kills*1.6),medals:Math.round(30+kills*.15)}:{alloy:Math.round(kills*.8)};
-  give(rw);if(win){stat('wins');assaultBroken(p);}sfx(win?'victory':'defeat');
+  Object.keys(rw).forEach(k=>rw[k]=Math.round(rw[k]*(1+.15*rl('loot'))));give(rw);if(win){stat('wins');assaultBroken(p);}sfx(win?'victory':'defeat');
   returnHome(p.group.position,surv,Math.min(S.G,b.next));// after time away, the trip home started when the battle ended
   if(aim&&aim.b===b)exitAim();
   battleReport({title:p.name,win,kills,lost,wnd,surv,ctrl:[before,p.ctrl],rw});renderWeap();renderChips();renderTop();}
@@ -1331,7 +1340,7 @@ function patrolFight(pt,troops,t0=S.G){const mixes=[['rivet',.6],['gnat',.4]];co
     puff(pt.g.position.clone(),0xffd27a,2.2,.6);puff(pt.g.position.clone(),0xff7a2a,1.2,1.2);despawn(pt);
     if(!pt.poi&&pt.i!=='scout')setTimeout(()=>{spawnPatrol(pt.i);},45000);}
   else pt.busy=false;
-  give(rw);returnHome(pt.g.position.clone(),surv,Math.min(S.G,t0));sfx(r.win?'victory':'defeat');
+  Object.keys(rw).forEach(k=>{if(!k.startsWith('sp:'))rw[k]=Math.round(rw[k]*(1+.15*rl('loot')));});give(rw);returnHome(pt.g.position.clone(),surv,Math.min(S.G,t0));sfx(r.win?'victory':'defeat');
   battleReport({title:pt.poi?pt.poi.name:pt.i==='scout'?'Droid Scout':`Droid Patrol Lv ${pt.lv}`,win:r.win,kills:Math.round(b.kills),lost,wnd,surv,rw,patrol:true});renderTop();}
 
 /* armies and battles in flight are saved too: closing the app mid-march must never lose troops.
@@ -1384,12 +1393,12 @@ function enterAim(w){const b=platBattle();if(!S.plat){toast('Build the Orbital U
   if(cdLeft(w)>0){toast(`Recharging ${fmt(cdLeft(w))}`,'warn');return;}
   aim={w,b,dir:null};closeSheet();setTab('map');focusPlanet(b.planet,Math.max(4,b.planet.r*11),.06);renderAim();coachOff();}
 function exitAim(){aim=null;reticle.visible=false;renderAim();}
-function aimAt(dir){aim.dir=dir;sfx('soft');const p=aim.b.planet;const R=WEAP[aim.w].rad*(aim.w==='shield'&&S.done.shield?1.3:1);
+function aimAt(dir){aim.dir=dir;sfx('soft');const p=aim.b.planet;const R=WEAP[aim.w].rad*(aim.w==='shield'?1+.15*rl('shield'):1);
   reticle.visible=true;reticle.position.copy(dir).multiplyScalar(p.r*1.02).add(p.group.position);reticle.quaternion.setFromUnitVectors(V3(0,0,1),dir);reticle.scale.setScalar(R*p.r*.9);
   reticle.children.forEach(c=>c.material.color.set(aim.w==='shield'?0x4fe3ff:0xffc94a));renderAim();}
-function barrageHits(b,dir){const R=WEAP.barrage.rad;const m=(1+(S.done.barrage?.3:0))*(1+.1*(S.b.uplink-1));
+function barrageHits(b,dir){const R=WEAP.barrage.rad;const m=(1+.3*rl('barrage'))*(1+.1*(S.b.uplink-1));
   return b.cols.map(c=>{const a=c.dir.angleTo(dir);return a<R?Math.min(c.n,c.n*clamp(1.2-a/R,0,.8)*.75*m):0;});}
-function shieldCov(b,dir){const R=WEAP.shield.rad*(S.done.shield?1.3:1);return clamp(1.25-dir.angleTo(b.lz)/R,0,1);}
+function shieldCov(b,dir){const R=WEAP.shield.rad*(1+.15*rl('shield'));return clamp(1.25-dir.angleTo(b.lz)/R,0,1);}
 function fireAim(){if(!aim||!aim.dir)return;const {w,b,dir}=aim;const p=b.planet;const from=plat.g.position.clone();
   S.cd[w]=S.G+WEAP[w].cd;stat('strikes');sfx(w);haptic(25);
   if(w==='barrage'){const hits=barrageHits(b,dir);const tot=hits.reduce((a,c)=>a+c,0);
@@ -1397,7 +1406,7 @@ function fireAim(){if(!aim||!aim.dir)return;const {w,b,dir}=aim;const p=b.planet
     setTimeout(()=>{b.cols.forEach((c,i)=>{c.n-=hits[i];});b.kills+=tot;const sc=screenOf(dir.clone().multiplyScalar(p.r).add(p.group.position),mcam);
       ftext(tot>=1?`−${nf(tot)} DROIDS`:'MISSED',sc,tot>=1?'#ffe7a8':'#ff9aa4');if(tot>=1){stat('barrageHits');}
       else toast('Missed. Aim at the red fire.','warn');},1100);}
-  else{const cov=shieldCov(b,dir);b.shield={dir:dir.clone(),until:b.round+WEAP.shield.rounds,cov};addDome(p,dir,WEAP.shield.rad*p.r*1.05*(S.done.shield?1.3:1),3.5*WEAP.shield.rounds);
+  else{const cov=shieldCov(b,dir);b.shield={dir:dir.clone(),until:b.round+WEAP.shield.rounds,cov};addDome(p,dir,WEAP.shield.rad*p.r*1.05*(1+.15*rl('shield')),3.5*WEAP.shield.rounds);
     fire(from,dir.clone().multiplyScalar(p.r).add(p.group.position),0x8ff0ff,8);
     const sc=screenOf(dir.clone().multiplyScalar(p.r).add(p.group.position),mcam);ftext(cov>.5?`SHIELD UP · ${Math.round(cov*100)}% COVER`:`SHIELD OFF TARGET · ${Math.round(cov*100)}%`,sc,cov>.5?'#bff6ff':'#ff9aa4');
     if(cov>.5)stat('shields');else toast('Put it on your landing zone','warn');}
@@ -1440,7 +1449,7 @@ function genOrder(){const n=S.mi-CH1,cc=S.b.cc,sp=cc>=6?'sp:1h':cc>=5?'sp:30m':'
   if(unb)return{t:`Build the ${BDEF[unb].n}`,h:BDEF[unb].d,kind:'b',k:unb,lv:1,rw:{alloy:300*cc,[sp]:1}};
   const slot=n%4;
   if(slot===0&&cc<10)return{t:`Command Center to Lv ${cc+1}`,h:'Raises every level cap.',kind:'b',k:'cc',lv:cc+1,rw:{alloy:500*cc,fuel:300*cc,[sp]:1}};
-  if(slot<=1){const left=RESEARCH.find(r=>!S.done[r.k]);if(S.b.lab&&left&&n%8===1)return{t:`Research ${left.n}`,h:left.d,kind:'st',key:'research',need:st('research')+1,go:'lab',rw:{credits:200*cc,[sp]:1}};
+  if(slot<=1){const left=RESEARCH.find(r=>rl(r.k)<Math.min(RMAX,S.b.lab));if(S.b.lab&&left&&n%8===1)return{t:`Research ${left.n}`,h:left.d,kind:'st',key:'research',need:st('research')+1,go:'lab',rw:{credits:200*cc,[sp]:1}};
     const k=Object.keys(BDEF).filter(k=>k!=='cc'&&S.b[k]&&S.b[k]<cc).sort((a,b)=>S.b[a]-S.b[b])[0];
     if(k)return{t:`${BDEF[k].n} to Lv ${S.b[k]+1}`,h:BDEF[k].d,kind:'b',k,lv:S.b[k]+1,rw:{alloy:250*cc,credits:120*cc}};}
   if(slot===3){const need=st('trained')+100*cc;return{t:`Train ${nf(100*cc)} troops`,h:'Any type.',kind:'st',key:'trained',need,go:'barracks',rw:{fuel:300*cc,[sp]:1}};}
@@ -1666,8 +1675,8 @@ function openPlot(k){const l=S.b[k],d=BDEF[k],n=l+1;let h=hd(l?'BUILDING':'EMPTY
     if(q)h+=`<div class="kv"><span>Training ${q.n} ${TN[q.t]}</span><b>${fmt(q.end-S.G)}</b></div><button class="btn" id="tSpd">Speed up</button>`;
     else{const mx=trainMax(k),def=Math.min(mx,S.tut<TUT.length?50:100);h+=`<div class="slider"><span>Amount</span><input type="range" id="tN" min="10" max="${mx}" step="10" value="${def}"><output id="tO">${def}</output></div><div id="tC"></div><button class="btn pri" id="tGo">Train</button>`;}
     h+=`</div>`;}
-  if(k==='lab'&&l){h+=`<div class="sec"><div class="h">Research</div>`+RESEARCH.map(r=>{const doing=S.research&&S.research.k===r.k;const left=doing?S.research.end-S.G:0;
-      return `<div class="rs"><div><b>${r.n}</b><small>${r.d} · ${fmt(r.t)}</small>${S.done[r.k]||doing?'':costHTML(r.cost)}</div>${S.done[r.k]?'<span class="note">Done</span>':doing?(left<=FREE?`<button class="btn grn" data-free="1">Free</button>`:`<button class="btn" data-spd="1">${fmt(left)}</button>`):`<button class="btn pri" data-r="${r.k}" ${S.research?'disabled':''}>Research</button>`}</div>`;}).join('')+`</div>`;}
+  if(k==='lab'&&l){h+=`<div class="sec"><div class="h">Research</div>`+RESEARCH.map(r=>{const doing=S.research&&S.research.k===r.k;const left=doing?S.research.end-S.G:0;const lv=rl(r.k),nx=lv+1,max=lv>=RMAX,gate=!max&&nx>l;
+      return `<div class="rs"><div><b>${r.n} <span class="rlv">${lv}/${RMAX}</span></b><small>${r.d} per level${max||doing||gate?'':' · '+fmt(rTime(r,nx))}</small>${max||doing||gate?'':costHTML(rCost(r,nx))}</div>${max?'<span class="note">Max</span>':doing?(left<=FREE?`<button class="btn grn" data-free="1">Free</button>`:`<button class="btn" data-spd="1">${fmt(left)}</button>`):gate?`<span class="note">Lab Lv ${nx}</span>`:`<button class="btn pri" data-r="${r.k}" ${S.research?'disabled':''}>Start</button>`}</div>`;}).join('')+`</div>`;}
   if(k==='hospital'&&l){const w=TYPES.reduce((s,t)=>s+S.wounded[t],0);h+=`<div class="sec"><div class="h">Wounded</div><div class="kv"><span>Waiting for treatment</span><b>${nf(w)}</b></div>${S.heal?`<div class="kv"><span>Healing</span><b>${fmt(S.heal.end-S.G)}</b></div>`:w?`${costHTML({fuel:Math.ceil(w*.5)})}<button class="btn pri" id="hGo">Heal all</button>`:'<span class="note">No wounded.</span>'}</div>`;}
   if(k==='comms'&&l){S.comms.log.forEach(m=>{if(!m.read){m.read=true;}});if(S.comms.log.length)stat('readComms');h+=`<div class="sec"><div class="h">Intercepted transmissions · next in ${fmt(Math.max(0,S.comms.next-S.G))}</div>`+(S.comms.log.length?S.comms.log.map(m=>{const live=m.poi&&!m.poi.done&&m.poi.exp>S.G;return `<div class="rs"><div><small style="color:${m.poi?'#ffe7a8':'#8f9bb3'};font-family:var(--mono)">${m.poi?'LOCATION ATTACHED · '+m.poi.name.toUpperCase():'DROID CHATTER'}</small><div style="font-size:13px;margin-top:3px">"${m.txt}"</div></div>${live?`<button class="btn pri" data-poi="${m.id}">Locate</button>`:m.poi?'<span class="note">Gone</span>':''}</div>`;}).join(''):'<span class="note">Listening…</span>')+`</div>`;}
   if(k==='uplink'&&l)h+=`<div class="sec"><div class="h">Orbital Platform</div><div class="kv"><span>Location</span><b>${plat.at?plat.at.name:'Travelling to '+(plat.to&&plat.to.name)}</b></div><div class="kv"><span>Barrage power</span><b>+${(l-1)*10}%</b></div><button class="btn" id="uMap">Show it on the star map</button></div>`;
