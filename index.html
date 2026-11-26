@@ -17,7 +17,7 @@
 </head>
 <body>
 
-<div class="sd-build">build 2026-11-26 03:56 UTC</div>
+<div class="sd-build">build 2026-11-26 03:57 UTC</div>
 <meta name="sd-orient" content="any">
 <script>if(matchMedia("(pointer:coarse)").matches||navigator.maxTouchPoints>0)document.documentElement.classList.add("sd-touch")</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -544,6 +544,10 @@ html.sd-touch .sd-build,.sd-build{bottom:calc(1px + env(safe-area-inset-bottom,0
 @keyframes astp{50%{background:#ff4d5e;box-shadow:0 0 12px #ff4d5e}}
 .chip.a{border-left-color:var(--foe)}.chip.a .ci{background:linear-gradient(180deg,#ff6d4a,#b0261c)}
 .wv{display:flex;flex-wrap:wrap;gap:6px}.wv span{font:500 12.5px var(--body);color:#c9d4e6;background:#ff4d5e18;box-shadow:inset 0 0 0 1px #ff4d5e40;border-radius:8px;padding:5px 8px}.wv b{color:#fff;font-family:var(--display)}
+.weap[hidden]{display:none!important}
+#modal .modal{max-height:calc(100% - 20px - var(--sat) - var(--sab,0px));overflow-y:auto;overscroll-behavior:contain}
+#app.L #modal .modal .tiles .rt{padding-top:8px;padding-bottom:8px}
+#brOk,#rwOk,#advOk{position:sticky;bottom:0;z-index:2;box-shadow:0 -10px 18px #0b1220}
 </style>
 
 <div id="app">
@@ -908,7 +912,7 @@ function mapCamUpdate(dt){const g=mc.goal;if(g){if(g.d!=null)mc.dist+=(g.d-mc.di
   const portraitBoost=mcam.aspect<1?1.55:1;const d=mc.dist*portraitBoost;
   mcam.position.set(mc.t.x,Math.sin(TILT)*d,mc.t.z+Math.cos(TILT)*d);mcam.lookAt(mc.t);
   bg.material.uniforms.uOff.value.set(mc.t.x*0.006,-mc.t.z*0.006);}
-function focusPlanet(p,d,lift=.2){const dd=d??Math.max(5,p.r*10);mc.goal={t:p.group.position.clone().add(V3(0,0,dd*lift)),d:dd};}// lift: the planet sits in the upper part of the screen, clear of the sheet
+function focusPlanet(p,d,lift=.2){const dd=d??Math.max(5,p.r*10);const L=app.clientWidth>app.clientHeight;mc.goal={t:p.group.position.clone().add(L?V3(dd*.18,0,-dd*.04):V3(0,0,dd*lift)),d:dd};}// portrait: planet above the bottom sheet; landscape: left of the side sheet, below the battle bar// lift: the planet sits in the upper part of the screen, clear of the sheet
 
 const selRing=sprite(GLOW,0xffc94a,.5,0);selRing.material.depthTest=false;selRing.renderOrder=9;mscene.add(selRing);let selShip=null;
 
